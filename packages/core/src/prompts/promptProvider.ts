@@ -116,6 +116,7 @@ export class PromptProvider {
       const options: snippets.SystemPromptOptions = {
         preamble: this.withSection('preamble', () => ({
           interactive: interactiveMode,
+          modelName: config.getModel(),
         })),
         coreMandates: this.withSection('coreMandates', () => ({
           interactive: interactiveMode,

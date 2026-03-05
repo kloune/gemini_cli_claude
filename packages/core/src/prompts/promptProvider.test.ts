@@ -54,6 +54,7 @@ describe('PromptProvider', () => {
         getSkills: vi.fn().mockReturnValue([]),
       }),
       getActiveModel: vi.fn().mockReturnValue(PREVIEW_GEMINI_MODEL),
+      getModel: vi.fn().mockReturnValue(PREVIEW_GEMINI_MODEL),
       getAgentRegistry: vi.fn().mockReturnValue({
         getAllDefinitions: vi.fn().mockReturnValue([]),
       }),
@@ -183,6 +184,31 @@ describe('PromptProvider', () => {
       );
       expect(prompt).toContain('/tmp/project-temp/plans/');
     });
+  });
+
+  it('should include "powered by Claude" when model is Claude', () => {
+    vi.mocked(getAllGeminiMdFilenames).mockReturnValue([
+      DEFAULT_CONTEXT_FILENAME,
+    ]);
+    (mockConfig.getModel as ReturnType<typeof vi.fn>).mockReturnValue(
+      'claude-sonnet-4-6',
+    );
+
+    const provider = new PromptProvider();
+    const prompt = provider.getCoreSystemPrompt(mockConfig);
+
+    expect(prompt).toContain('powered by Claude');
+  });
+
+  it('should NOT include "powered by Claude" for Gemini models', () => {
+    vi.mocked(getAllGeminiMdFilenames).mockReturnValue([
+      DEFAULT_CONTEXT_FILENAME,
+    ]);
+
+    const provider = new PromptProvider();
+    const prompt = provider.getCoreSystemPrompt(mockConfig);
+
+    expect(prompt).not.toContain('powered by Claude');
   });
 
   describe('getCompressionPrompt', () => {

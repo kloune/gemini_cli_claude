@@ -33,6 +33,7 @@ import { retryWithBackoff } from '../utils/retry.js';
 import { WEB_FETCH_DEFINITION } from './definitions/coreTools.js';
 import { resolveToolDeclaration } from './definitions/resolver.js';
 import { LRUCache } from 'mnemonist';
+import { isClaudeModel } from '../config/models.js';
 
 const URL_FETCH_TIMEOUT_MS = 10000;
 const MAX_CONTENT_LENGTH = 100000;
@@ -247,14 +248,16 @@ class WebFetchToolInvocation extends BaseToolInvocation<
       );
 
       const geminiClient = this.config.getGeminiClient();
-      const fallbackPrompt = `The user requested the following: "${this.params.prompt}".
+      const fallbackPrompt = `Process the following request using the fetched page content below.
 
-I was unable to access the URL directly. Instead, I have fetched the raw content of the page. Please use the following content to answer the request. Do not attempt to access the URL again.
+User request: "${this.params.prompt}"
 
+Fetched page content:
 ---
 ${textContent}
 ---
-`;
+
+Analyze the content above and respond to the user's request. Provide a clear, well-structured answer based on the page content.`;
       const result = await geminiClient.generateContent(
         { model: 'web-fetch-fallback' },
         [{ role: 'user', parts: [{ text: fallbackPrompt }] }],
@@ -509,6 +512,15 @@ Response: ${truncateString(rawResponseText, 10000, '\n\n... [Error response trun
     if (this.config.getDirectWebFetch()) {
       return this.executeExperimental(signal);
     }
+
+    // Claude models don't support urlContext - use fallback/experimental path
+    if (isClaudeModel(this.config.getModel())) {
+      if (this.params.url) {
+        return this.executeExperimental(signal);
+      }
+      return this.executeFallback(signal);
+    }
+
     const userPrompt = this.params.prompt!;
     const { validUrls: urls } = parsePrompt(userPrompt);
     const url = urls[0];

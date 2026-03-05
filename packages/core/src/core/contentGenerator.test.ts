@@ -27,6 +27,9 @@ vi.mock('./apiKeyCredentialStorage.js', () => ({
 }));
 
 vi.mock('./fakeContentGenerator.js');
+vi.mock('./claudeContentGenerator.js', () => ({
+  ClaudeContentGenerator: vi.fn(),
+}));
 
 const mockConfig = {
   getModel: vi.fn().mockReturnValue('gemini-pro'),
@@ -558,5 +561,97 @@ describe('createContentGeneratorConfig', () => {
     );
     expect(config.apiKey).toBeUndefined();
     expect(config.vertexai).toBeUndefined();
+  });
+});
+
+describe('createContentGenerator with Claude models', () => {
+  beforeEach(() => {
+    resetVersionCache();
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('should create ClaudeContentGenerator for Claude model with Vertex AI auth', async () => {
+    vi.stubEnv('GOOGLE_CLOUD_PROJECT', 'test-project');
+    vi.stubEnv('GOOGLE_CLOUD_LOCATION', 'us-east5');
+
+    const claudeConfig = {
+      getModel: vi.fn().mockReturnValue('claude-sonnet-4-6'),
+      getProxy: vi.fn().mockReturnValue(undefined),
+      getUsageStatisticsEnabled: vi.fn().mockReturnValue(false),
+    } as unknown as Config;
+
+    const generator = await createContentGenerator(
+      {
+        authType: AuthType.USE_VERTEX_AI,
+        vertexai: true,
+      },
+      claudeConfig,
+    );
+
+    expect(generator).toBeInstanceOf(LoggingContentGenerator);
+  });
+
+  it('should throw error when using Claude with USE_GEMINI auth', async () => {
+    const claudeConfig = {
+      getModel: vi.fn().mockReturnValue('claude-sonnet-4-6'),
+      getProxy: vi.fn().mockReturnValue(undefined),
+      getUsageStatisticsEnabled: vi.fn().mockReturnValue(false),
+    } as unknown as Config;
+
+    await expect(
+      createContentGenerator(
+        {
+          apiKey: 'test-key',
+          authType: AuthType.USE_GEMINI,
+        },
+        claudeConfig,
+      ),
+    ).rejects.toThrow('Vertex AI authentication');
+  });
+
+  it('should throw error when GOOGLE_CLOUD_PROJECT is missing for Claude', async () => {
+    vi.stubEnv('GOOGLE_CLOUD_LOCATION', 'us-east5');
+    vi.stubEnv('GOOGLE_CLOUD_PROJECT', '');
+
+    const claudeConfig = {
+      getModel: vi.fn().mockReturnValue('claude-opus-4-6'),
+      getProxy: vi.fn().mockReturnValue(undefined),
+      getUsageStatisticsEnabled: vi.fn().mockReturnValue(false),
+    } as unknown as Config;
+
+    await expect(
+      createContentGenerator(
+        {
+          authType: AuthType.USE_VERTEX_AI,
+          vertexai: true,
+        },
+        claudeConfig,
+      ),
+    ).rejects.toThrow('GOOGLE_CLOUD_PROJECT');
+  });
+
+  it('should throw error when GOOGLE_CLOUD_LOCATION is missing for Claude', async () => {
+    vi.stubEnv('GOOGLE_CLOUD_PROJECT', 'test-project');
+    vi.stubEnv('GOOGLE_CLOUD_LOCATION', '');
+
+    const claudeConfig = {
+      getModel: vi.fn().mockReturnValue('claude-haiku-4-5@20251001'),
+      getProxy: vi.fn().mockReturnValue(undefined),
+      getUsageStatisticsEnabled: vi.fn().mockReturnValue(false),
+    } as unknown as Config;
+
+    await expect(
+      createContentGenerator(
+        {
+          authType: AuthType.USE_VERTEX_AI,
+          vertexai: true,
+        },
+        claudeConfig,
+      ),
+    ).rejects.toThrow('GOOGLE_CLOUD_LOCATION');
   });
 });

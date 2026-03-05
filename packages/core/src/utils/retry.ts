@@ -136,9 +136,11 @@ export function isRetryableError(
     );
   }
 
-  // Check for status using helper (handles other error shapes)
+  // Check for status using helper (handles other error shapes including
+  // Anthropic SDK errors which have a `status` property for 429/529/etc.)
   const status = getErrorStatus(error);
   if (status !== undefined) {
+    if (status === 400) return false; // Bad request - not retryable
     return status === 429 || status === 499 || (status >= 500 && status < 600);
   }
 

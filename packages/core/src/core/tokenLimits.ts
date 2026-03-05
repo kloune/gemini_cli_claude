@@ -10,6 +10,7 @@ import {
   DEFAULT_GEMINI_MODEL,
   PREVIEW_GEMINI_FLASH_MODEL,
   PREVIEW_GEMINI_MODEL,
+  isClaudeModel,
 } from '../config/models.js';
 
 type Model = string;
@@ -20,6 +21,9 @@ export const DEFAULT_TOKEN_LIMIT = 1_048_576;
 export function tokenLimit(model: Model): TokenCount {
   // Add other models as they become relevant or if specified by config
   // Pulled from https://ai.google.dev/gemini-api/docs/models
+  if (model && isClaudeModel(model)) {
+    return 200_000;
+  }
   switch (model) {
     case PREVIEW_GEMINI_MODEL:
     case PREVIEW_GEMINI_FLASH_MODEL:

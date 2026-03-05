@@ -25,6 +25,7 @@ import type { Config } from '../config/config.js';
 import {
   resolveModel,
   isGemini2Model,
+  isClaudeModel,
   supportsModernFeatures,
 } from '../config/models.js';
 import { hasCycleInSchema } from '../tools/tools.js';
@@ -742,7 +743,11 @@ export class GeminiChat {
   // To ensure our requests validate, the first function call in every model
   // turn within the active loop must have a `thoughtSignature` property.
   // If we do not do this, we will get back 400 errors from the API.
+  // Claude models don't use thoughtSignatures, so skip this entirely.
   ensureActiveLoopHasThoughtSignatures(requestContents: Content[]): Content[] {
+    if (isClaudeModel(this.config.getModel())) {
+      return requestContents;
+    }
     // First, find the start of the active loop by finding the last user turn
     // with a text message, i.e. that is not a function response.
     let activeLoopStartIndex = -1;

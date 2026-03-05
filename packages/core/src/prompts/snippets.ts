@@ -53,6 +53,7 @@ export interface SystemPromptOptions {
 
 export interface PreambleOptions {
   interactive: boolean;
+  modelName?: string;
 }
 
 export interface CoreMandatesOptions {
@@ -157,9 +158,14 @@ ${renderUserMemory(userMemory, contextFilenames)}
 
 export function renderPreamble(options?: PreambleOptions): string {
   if (!options) return '';
+  const isClaudeBackend =
+    options.modelName && options.modelName.startsWith('claude-');
+  const agentName = isClaudeBackend
+    ? 'Gemini CLI (powered by Claude)'
+    : 'Gemini CLI';
   return options.interactive
-    ? 'You are Gemini CLI, an interactive CLI agent specializing in software engineering tasks. Your primary goal is to help users safely and effectively.'
-    : 'You are Gemini CLI, an autonomous CLI agent specializing in software engineering tasks. Your primary goal is to help users safely and effectively.';
+    ? `You are ${agentName}, an interactive CLI agent specializing in software engineering tasks. Your primary goal is to help users safely and effectively.`
+    : `You are ${agentName}, an autonomous CLI agent specializing in software engineering tasks. Your primary goal is to help users safely and effectively.`;
 }
 
 export function renderCoreMandates(options?: CoreMandatesOptions): string {

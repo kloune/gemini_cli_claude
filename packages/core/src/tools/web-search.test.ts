@@ -18,10 +18,15 @@ import type { Config } from '../config/config.js';
 import { GeminiClient } from '../core/client.js';
 import { ToolErrorType } from './tool-error.js';
 import { createMockMessageBus } from '../test-utils/mock-message-bus.js';
+import { fetchWithTimeout } from '../utils/fetch.js';
 
 // Mock GeminiClient and Config constructor
 vi.mock('../core/client.js');
 vi.mock('../config/config.js');
+vi.mock('../utils/fetch.js', () => ({
+  fetchWithTimeout: vi.fn(),
+  isPrivateIp: vi.fn().mockReturnValue(false),
+}));
 
 describe('WebSearchTool', () => {
   const abortSignal = new AbortController().signal;
@@ -31,6 +36,7 @@ describe('WebSearchTool', () => {
   beforeEach(() => {
     const mockConfigInstance = {
       getGeminiClient: () => mockGeminiClient,
+      getModel: () => 'gemini-2.5-flash',
       getProxy: () => undefined,
       generationConfigService: {
         getResolvedConfig: vi.fn().mockImplementation(({ model }) => ({
@@ -259,6 +265,85 @@ Sources:
         'Search results for "multibyte query" returned.',
       );
       expect(result.sources).toHaveLength(3);
+    });
+
+    describe('execute with Claude model', () => {
+      let claudeTool: WebSearchTool;
+
+      beforeEach(() => {
+        const claudeConfigInstance = {
+          getGeminiClient: () => mockGeminiClient,
+          getModel: () => 'claude-sonnet-4-6',
+          getProxy: () => undefined,
+          generationConfigService: {
+            getResolvedConfig: vi.fn().mockImplementation(({ model }) => ({
+              model,
+              sdkConfig: {},
+            })),
+          },
+        } as unknown as Config;
+        mockGeminiClient = new GeminiClient(claudeConfigInstance);
+        claudeTool = new WebSearchTool(
+          claudeConfigInstance,
+          createMockMessageBus(),
+        );
+      });
+
+      afterEach(() => {
+        vi.unstubAllEnvs();
+      });
+
+      it('should use external search when Claude is active', async () => {
+        vi.stubEnv('GOOGLE_CSE_API_KEY', 'test-key');
+        vi.stubEnv('GOOGLE_CSE_CX', 'test-cx');
+
+        (fetchWithTimeout as Mock).mockResolvedValue({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              items: [
+                {
+                  title: 'Test',
+                  link: 'https://example.com',
+                  snippet: 'A test snippet',
+                },
+              ],
+            }),
+        });
+
+        (mockGeminiClient.generateContent as Mock).mockResolvedValue({
+          candidates: [
+            {
+              content: {
+                role: 'model',
+                parts: [{ text: 'Synthesized response from search results.' }],
+              },
+            },
+          ],
+        });
+
+        const params: WebSearchToolParams = { query: 'claude search test' };
+        const invocation = claudeTool.build(params);
+        const result = await invocation.execute(abortSignal);
+
+        expect(fetchWithTimeout).toHaveBeenCalledWith(
+          expect.stringContaining('customsearch'),
+          expect.any(Number),
+          expect.any(Object),
+        );
+        expect(result.llmContent).toContain('Web search results');
+      });
+
+      it('should return error when CSE credentials missing with Claude', async () => {
+        const params: WebSearchToolParams = {
+          query: 'claude missing creds test',
+        };
+        const invocation = claudeTool.build(params);
+        const result = await invocation.execute(abortSignal);
+
+        expect(result.llmContent).toContain('GOOGLE_CSE_API_KEY');
+        expect(result.error?.type).toBe(ToolErrorType.WEB_SEARCH_FAILED);
+      });
     });
   });
 });

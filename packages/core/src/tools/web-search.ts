@@ -23,6 +23,8 @@ import { debugLogger } from '../utils/debugLogger.js';
 import { WEB_SEARCH_DEFINITION } from './definitions/coreTools.js';
 import { resolveToolDeclaration } from './definitions/resolver.js';
 import { LlmRole } from '../telemetry/llmRole.js';
+import { isClaudeModel } from '../config/models.js';
+import { fetchWithTimeout } from '../utils/fetch.js';
 
 interface GroundingChunkWeb {
   uri?: string;
@@ -84,7 +86,112 @@ class WebSearchToolInvocation extends BaseToolInvocation<
     return `Searching the web for: "${this.params.query}"`;
   }
 
+  private async executeWithExternalSearch(
+    signal: AbortSignal,
+  ): Promise<WebSearchToolResult> {
+    const apiKey = process.env['GOOGLE_CSE_API_KEY'];
+    const cseId = process.env['GOOGLE_CSE_CX'];
+
+    if (!apiKey || !cseId) {
+      return {
+        llmContent:
+          'Error: Web search with Claude requires GOOGLE_CSE_API_KEY and GOOGLE_CSE_CX environment variables. ' +
+          'Set up a Google Custom Search Engine at https://programmablesearchengine.google.com/ ' +
+          'and enable the Custom Search JSON API in your Google Cloud project.',
+        returnDisplay: 'Error: Missing Google Custom Search API credentials.',
+        error: {
+          message:
+            'Web search with Claude requires GOOGLE_CSE_API_KEY and GOOGLE_CSE_CX environment variables.',
+          type: ToolErrorType.WEB_SEARCH_FAILED,
+        },
+      };
+    }
+
+    try {
+      const searchUrl = `https://www.googleapis.com/customsearch/v1?key=${encodeURIComponent(apiKey)}&cx=${encodeURIComponent(cseId)}&q=${encodeURIComponent(this.params.query)}&num=5`;
+
+      const response = await fetchWithTimeout(searchUrl, 10000, { signal });
+      if (!response.ok) {
+        throw new Error(
+          `Custom Search API returned status ${response.status}`,
+        );
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+      const data = (await response.json()) as {
+        items?: Array<{
+          title?: string;
+          link?: string;
+          snippet?: string;
+        }>;
+      };
+
+      if (!data.items || data.items.length === 0) {
+        return {
+          llmContent: `No search results found for query: "${this.params.query}"`,
+          returnDisplay: 'No results found.',
+        };
+      }
+
+      // Format search results
+      const formattedResults = data.items
+        .map(
+          (item, i) =>
+            `[${i + 1}] ${item.title || 'Untitled'}\n${item.link || ''}\n${item.snippet || ''}`,
+        )
+        .join('\n\n');
+
+      // Pass results to LLM for synthesis (use web-fetch-fallback config
+      // which doesn't include googleSearch tool that Claude can't use)
+      const geminiClient = this.config.getGeminiClient();
+      const synthesisPrompt = `Synthesize the following search results for the query "${this.params.query}" into a clear, accurate answer. Include inline citation numbers (e.g., [1], [2]) referencing the sources below. Focus on directly answering the query.\n\nSearch Results:\n${formattedResults}`;
+
+      const llmResponse = await geminiClient.generateContent(
+        { model: 'web-fetch-fallback' },
+        [{ role: 'user', parts: [{ text: synthesisPrompt }] }],
+        signal,
+        LlmRole.UTILITY_TOOL,
+      );
+
+      const responseText = getResponseText(llmResponse) || formattedResults;
+
+      const sources = data.items.map((item) => ({
+        web: { uri: item.link, title: item.title },
+      }));
+
+      const sourceListFormatted = data.items.map(
+        (item, i) =>
+          `[${i + 1}] ${item.title || 'Untitled'} (${item.link || 'No URI'})`,
+      );
+
+      const fullResponse =
+        responseText + '\n\nSources:\n' + sourceListFormatted.join('\n');
+
+      return {
+        llmContent: `Web search results for "${this.params.query}":\n\n${fullResponse}`,
+        returnDisplay: `Search results for "${this.params.query}" returned.`,
+        sources,
+      };
+    } catch (error: unknown) {
+      const errorMessage = `Error during web search for query "${this.params.query}": ${getErrorMessage(error)}`;
+      debugLogger.warn(errorMessage, error);
+      return {
+        llmContent: `Error: ${errorMessage}`,
+        returnDisplay: `Error performing web search.`,
+        error: {
+          message: errorMessage,
+          type: ToolErrorType.WEB_SEARCH_FAILED,
+        },
+      };
+    }
+  }
+
   async execute(signal: AbortSignal): Promise<WebSearchToolResult> {
+    // Claude models don't support Gemini's googleSearch - use external search API
+    if (isClaudeModel(this.config.getModel())) {
+      return this.executeWithExternalSearch(signal);
+    }
+
     const geminiClient = this.config.getGeminiClient();
 
     try {
