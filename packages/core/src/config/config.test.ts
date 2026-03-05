@@ -2215,6 +2215,60 @@ describe('Config getHooks', () => {
       config.setModel(DEFAULT_GEMINI_MODEL, false);
       expect(onModelChange).toHaveBeenCalledWith(DEFAULT_GEMINI_MODEL);
     });
+
+    it('should trigger refreshAuth when switching from Gemini to Claude', async () => {
+      const config = new Config(baseParams);
+
+      // Set up contentGeneratorConfig with authType via refreshAuth
+      vi.mocked(createContentGeneratorConfig).mockResolvedValue({
+        authType: AuthType.USE_VERTEX_AI,
+      } as Partial<ContentGeneratorConfig> as ContentGeneratorConfig);
+      await config.refreshAuth(AuthType.USE_VERTEX_AI);
+
+      const refreshSpy = vi.spyOn(config, 'refreshAuth');
+
+      // Set a Gemini model first
+      config.setModel('gemini-2.5-pro');
+      expect(refreshSpy).not.toHaveBeenCalled();
+
+      // Switch to Claude - should trigger refreshAuth
+      config.setModel('claude-sonnet-4-6');
+      expect(refreshSpy).toHaveBeenCalledWith(AuthType.USE_VERTEX_AI);
+    });
+
+    it('should NOT trigger refreshAuth when switching between Claude models', async () => {
+      const config = new Config(baseParams);
+
+      // Set up contentGeneratorConfig with authType via refreshAuth
+      vi.mocked(createContentGeneratorConfig).mockResolvedValue({
+        authType: AuthType.USE_VERTEX_AI,
+      } as Partial<ContentGeneratorConfig> as ContentGeneratorConfig);
+      await config.refreshAuth(AuthType.USE_VERTEX_AI);
+
+      // Set to Claude first
+      config.setModel('claude-sonnet-4-6');
+
+      const refreshSpy = vi.spyOn(config, 'refreshAuth');
+
+      // Switch between Claude models
+      config.setModel('claude-opus-4-6');
+      expect(refreshSpy).not.toHaveBeenCalled();
+    });
+
+    it('should NOT trigger refreshAuth when switching between Gemini models', async () => {
+      const config = new Config(baseParams);
+
+      // Set up contentGeneratorConfig with authType via refreshAuth
+      vi.mocked(createContentGeneratorConfig).mockResolvedValue({
+        authType: AuthType.USE_GEMINI,
+      } as Partial<ContentGeneratorConfig> as ContentGeneratorConfig);
+      await config.refreshAuth(AuthType.USE_GEMINI);
+
+      const refreshSpy = vi.spyOn(config, 'refreshAuth');
+
+      config.setModel('gemini-2.5-flash');
+      expect(refreshSpy).not.toHaveBeenCalled();
+    });
   });
 });
 

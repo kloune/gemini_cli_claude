@@ -56,6 +56,7 @@ import {
   DEFAULT_GEMINI_MODEL,
   DEFAULT_GEMINI_MODEL_AUTO,
   isAutoModel,
+  isClaudeModel,
   isPreviewModel,
   PREVIEW_GEMINI_FLASH_MODEL,
   PREVIEW_GEMINI_MODEL,
@@ -1398,6 +1399,7 @@ export class Config implements McpContext {
   }
 
   setModel(newModel: string, isTemporary: boolean = true): void {
+    const oldModel = this.model;
     if (this.model !== newModel || this._activeModel !== newModel) {
       this.model = newModel;
       // When the user explicitly sets a model, that becomes the active model.
@@ -1408,6 +1410,18 @@ export class Config implements McpContext {
       this.onModelChange(newModel);
     }
     this.modelAvailabilityService.reset();
+
+    // Recreate content generator when switching between Gemini and Claude providers
+    const providerChanged =
+      isClaudeModel(oldModel) !== isClaudeModel(newModel);
+    if (providerChanged && this.contentGeneratorConfig?.authType) {
+      // Strip thought signatures when switching providers
+      this.geminiClient.stripThoughtsFromHistory();
+      // refreshAuth is async but safe here: GeminiChat.sendMessageStream()
+      // serializes via sendPromise, so the next API call won't fire until
+      // after the model dialog closes and the user types a new message.
+      void this.refreshAuth(this.contentGeneratorConfig.authType);
+    }
   }
 
   activateFallbackMode(model: string): void {

@@ -16,6 +16,9 @@ import {
   DEFAULT_GEMINI_FLASH_MODEL,
   DEFAULT_GEMINI_FLASH_LITE_MODEL,
   DEFAULT_GEMINI_MODEL_AUTO,
+  CLAUDE_OPUS_MODEL,
+  CLAUDE_SONNET_MODEL,
+  CLAUDE_HAIKU_MODEL,
   ModelSlashCommandEvent,
   logModelSlashCommand,
   getDisplayString,
@@ -56,6 +59,9 @@ export function ModelDialog({ onClose }: ModelDialogProps): React.JSX.Element {
       PREVIEW_GEMINI_3_1_MODEL,
       PREVIEW_GEMINI_3_1_CUSTOM_TOOLS_MODEL,
       PREVIEW_GEMINI_FLASH_MODEL,
+      CLAUDE_OPUS_MODEL,
+      CLAUDE_SONNET_MODEL,
+      CLAUDE_HAIKU_MODEL,
     ];
     if (manualModels.includes(preferredModel)) {
       return preferredModel;
@@ -155,8 +161,30 @@ export function ModelDialog({ onClose }: ModelDialogProps): React.JSX.Element {
         },
       );
     }
+
+    // Add Claude models when using Vertex AI auth
+    if (selectedAuthType === AuthType.USE_VERTEX_AI) {
+      list.push(
+        {
+          value: CLAUDE_OPUS_MODEL,
+          title: getDisplayString(CLAUDE_OPUS_MODEL),
+          key: CLAUDE_OPUS_MODEL,
+        },
+        {
+          value: CLAUDE_SONNET_MODEL,
+          title: getDisplayString(CLAUDE_SONNET_MODEL),
+          key: CLAUDE_SONNET_MODEL,
+        },
+        {
+          value: CLAUDE_HAIKU_MODEL,
+          title: getDisplayString(CLAUDE_HAIKU_MODEL),
+          key: CLAUDE_HAIKU_MODEL,
+        },
+      );
+    }
+
     return list;
-  }, [shouldShowPreviewModels, useGemini31, useCustomToolModel]);
+  }, [shouldShowPreviewModels, useGemini31, useCustomToolModel, selectedAuthType]);
 
   const options = view === 'main' ? mainOptions : manualOptions;
 

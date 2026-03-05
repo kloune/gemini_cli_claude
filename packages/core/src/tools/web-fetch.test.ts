@@ -246,6 +246,7 @@ describe('WebFetchTool', () => {
       getApprovalMode: vi.fn(),
       setApprovalMode: vi.fn(),
       getProxy: vi.fn(),
+      getModel: vi.fn().mockReturnValue('gemini-2.5-flash'),
       getGeminiClient: mockGetGeminiClient,
       getRetryFetchErrors: vi.fn().mockReturnValue(false),
       getDirectWebFetch: vi.fn().mockReturnValue(false),
@@ -932,6 +933,61 @@ describe('WebFetchTool', () => {
 
       expect(result.llmContent).toContain('Error: Invalid URL "not-a-url"');
       expect(result.error?.type).toBe(ToolErrorType.INVALID_TOOL_PARAMS);
+    });
+  });
+
+  describe('execute with Claude model', () => {
+    beforeEach(() => {
+      vi.spyOn(mockConfig, 'getModel').mockReturnValue('claude-sonnet-4-6');
+      vi.spyOn(fetchUtils, 'isPrivateIp').mockReturnValue(false);
+    });
+
+    it('should route to fallback when Claude is active with prompt param', async () => {
+      mockFetch('https://example.com/', {
+        headers: new Headers({ 'content-type': 'text/html' }),
+        text: () => Promise.resolve('<html><body>Hello Claude</body></html>'),
+      });
+
+      mockGenerateContent.mockResolvedValue({
+        candidates: [
+          {
+            content: {
+              parts: [{ text: 'Processed fallback content for Claude' }],
+              role: 'model',
+            },
+          },
+        ],
+      });
+
+      const tool = new WebFetchTool(mockConfig, bus);
+      const params = { prompt: 'fetch https://example.com' };
+      const invocation = tool.build(params);
+      const result = await invocation.execute(new AbortController().signal);
+
+      expect(result.llmContent).toContain('Processed fallback content');
+      expect(result.returnDisplay).toContain('fallback fetch');
+    });
+
+    it('should route to experimental when Claude is active with url param', async () => {
+      vi.spyOn(mockConfig, 'getDirectWebFetch').mockReturnValue(false);
+
+      mockFetch('https://example.com/', {
+        status: 200,
+        headers: new Headers({ 'content-type': 'text/plain' }),
+        text: () => Promise.resolve('Plain text from experimental path'),
+      });
+
+      const tool = new WebFetchTool(mockConfig, bus);
+      // Bypass build() validation (which requires prompt when directWebFetch is false)
+      // to test the Claude url param path in execute()
+      const invocation = tool['createInvocation'](
+        { url: 'https://example.com' },
+        bus,
+      );
+      const result = await invocation.execute(new AbortController().signal);
+
+      expect(result.llmContent).toBe('Plain text from experimental path');
+      expect(result.returnDisplay).toContain('Fetched text/plain content');
     });
   });
 });

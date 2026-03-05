@@ -30,6 +30,13 @@ import {
   PREVIEW_GEMINI_3_1_CUSTOM_TOOLS_MODEL,
   isPreviewModel,
   isProModel,
+  CLAUDE_OPUS_MODEL,
+  CLAUDE_SONNET_MODEL,
+  CLAUDE_HAIKU_MODEL,
+  CLAUDE_MODEL_ALIAS_OPUS,
+  CLAUDE_MODEL_ALIAS_SONNET,
+  CLAUDE_MODEL_ALIAS_HAIKU,
+  isClaudeModel,
 } from './models.js';
 
 describe('isPreviewModel', () => {
@@ -78,6 +85,12 @@ describe('isCustomModel', () => {
     expect(isCustomModel(GEMINI_MODEL_ALIAS_AUTO)).toBe(false);
     expect(isCustomModel(GEMINI_MODEL_ALIAS_PRO)).toBe(false);
   });
+
+  it('should return true for Claude models', () => {
+    expect(isCustomModel(CLAUDE_OPUS_MODEL)).toBe(true);
+    expect(isCustomModel(CLAUDE_SONNET_MODEL)).toBe(true);
+    expect(isCustomModel(CLAUDE_HAIKU_MODEL)).toBe(true);
+  });
 });
 
 describe('supportsModernFeatures', () => {
@@ -103,6 +116,12 @@ describe('supportsModernFeatures', () => {
     expect(supportsModernFeatures(GEMINI_MODEL_ALIAS_PRO)).toBe(true);
     expect(supportsModernFeatures(GEMINI_MODEL_ALIAS_AUTO)).toBe(true);
   });
+
+  it('should return true for Claude models', () => {
+    expect(supportsModernFeatures(CLAUDE_OPUS_MODEL)).toBe(true);
+    expect(supportsModernFeatures(CLAUDE_SONNET_MODEL)).toBe(true);
+    expect(supportsModernFeatures(CLAUDE_HAIKU_MODEL)).toBe(true);
+  });
 });
 
 describe('isGemini3Model', () => {
@@ -125,6 +144,12 @@ describe('isGemini3Model', () => {
 
   it('should return false for arbitrary strings', () => {
     expect(isGemini3Model('gpt-4')).toBe(false);
+  });
+
+  it('should return false for Claude models', () => {
+    expect(isGemini3Model(CLAUDE_OPUS_MODEL)).toBe(false);
+    expect(isGemini3Model(CLAUDE_SONNET_MODEL)).toBe(false);
+    expect(isGemini3Model(CLAUDE_HAIKU_MODEL)).toBe(false);
   });
 });
 
@@ -160,6 +185,20 @@ describe('getDisplayString', () => {
     expect(getDisplayString(DEFAULT_GEMINI_FLASH_LITE_MODEL)).toBe(
       DEFAULT_GEMINI_FLASH_LITE_MODEL,
     );
+  });
+
+  it('should return display names for Claude models', () => {
+    expect(getDisplayString(CLAUDE_OPUS_MODEL)).toBe('Claude Opus 4.6');
+    expect(getDisplayString(CLAUDE_SONNET_MODEL)).toBe('Claude Sonnet 4.6');
+    expect(getDisplayString(CLAUDE_HAIKU_MODEL)).toBe('Claude Haiku 4.5');
+  });
+
+  it('should return display names for Claude aliases', () => {
+    expect(getDisplayString(CLAUDE_MODEL_ALIAS_OPUS)).toBe('Claude Opus 4.6');
+    expect(getDisplayString(CLAUDE_MODEL_ALIAS_SONNET)).toBe(
+      'Claude Sonnet 4.6',
+    );
+    expect(getDisplayString(CLAUDE_MODEL_ALIAS_HAIKU)).toBe('Claude Haiku 4.5');
   });
 });
 
@@ -216,6 +255,18 @@ describe('resolveModel', () => {
       const model = resolveModel(customModel);
       expect(model).toBe(customModel);
     });
+
+    it('should resolve Claude aliases to concrete model names', () => {
+      expect(resolveModel(CLAUDE_MODEL_ALIAS_OPUS)).toBe(CLAUDE_OPUS_MODEL);
+      expect(resolveModel(CLAUDE_MODEL_ALIAS_SONNET)).toBe(CLAUDE_SONNET_MODEL);
+      expect(resolveModel(CLAUDE_MODEL_ALIAS_HAIKU)).toBe(CLAUDE_HAIKU_MODEL);
+    });
+
+    it('should return concrete Claude model names unchanged', () => {
+      expect(resolveModel(CLAUDE_OPUS_MODEL)).toBe(CLAUDE_OPUS_MODEL);
+      expect(resolveModel(CLAUDE_SONNET_MODEL)).toBe(CLAUDE_SONNET_MODEL);
+      expect(resolveModel(CLAUDE_HAIKU_MODEL)).toBe(CLAUDE_HAIKU_MODEL);
+    });
   });
 });
 
@@ -242,6 +293,12 @@ describe('isGemini2Model', () => {
 
   it('should return false for arbitrary strings', () => {
     expect(isGemini2Model('gpt-4')).toBe(false);
+  });
+
+  it('should return false for Claude models', () => {
+    expect(isGemini2Model(CLAUDE_OPUS_MODEL)).toBe(false);
+    expect(isGemini2Model(CLAUDE_SONNET_MODEL)).toBe(false);
+    expect(isGemini2Model(CLAUDE_HAIKU_MODEL)).toBe(false);
   });
 });
 
@@ -355,5 +412,26 @@ describe('isActiveModel', () => {
     expect(
       isActiveModel(PREVIEW_GEMINI_3_1_CUSTOM_TOOLS_MODEL, false, false),
     ).toBe(false);
+  });
+});
+
+describe('isClaudeModel', () => {
+  it('should return true for concrete Claude models', () => {
+    expect(isClaudeModel(CLAUDE_OPUS_MODEL)).toBe(true);
+    expect(isClaudeModel(CLAUDE_SONNET_MODEL)).toBe(true);
+    expect(isClaudeModel(CLAUDE_HAIKU_MODEL)).toBe(true);
+  });
+
+  it('should return true for Claude aliases', () => {
+    expect(isClaudeModel(CLAUDE_MODEL_ALIAS_OPUS)).toBe(true);
+    expect(isClaudeModel(CLAUDE_MODEL_ALIAS_SONNET)).toBe(true);
+    expect(isClaudeModel(CLAUDE_MODEL_ALIAS_HAIKU)).toBe(true);
+  });
+
+  it('should return false for Gemini models and other strings', () => {
+    expect(isClaudeModel('gemini-2.5-pro')).toBe(false);
+    expect(isClaudeModel('gemini-3-pro-preview')).toBe(false);
+    expect(isClaudeModel('')).toBe(false);
+    expect(isClaudeModel('not-claude')).toBe(false);
   });
 });

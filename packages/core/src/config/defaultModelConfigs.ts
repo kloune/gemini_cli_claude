@@ -89,6 +89,33 @@ export const DEFAULT_MODEL_CONFIGS: ModelConfigServiceConfig = {
         model: 'gemini-2.5-flash-lite',
       },
     },
+    'claude-opus-4-6': {
+      extends: 'base',
+      modelConfig: {
+        model: 'claude-opus-4-6',
+        generateContentConfig: {
+          temperature: 1,
+        },
+      },
+    },
+    'claude-sonnet-4-6': {
+      extends: 'base',
+      modelConfig: {
+        model: 'claude-sonnet-4-6',
+        generateContentConfig: {
+          temperature: 1,
+        },
+      },
+    },
+    'claude-haiku-4-5@20251001': {
+      extends: 'base',
+      modelConfig: {
+        model: 'claude-haiku-4-5@20251001',
+        generateContentConfig: {
+          temperature: 1,
+        },
+      },
+    },
     // Bases for the internal model configs.
     'gemini-2.5-flash-base': {
       extends: 'base',

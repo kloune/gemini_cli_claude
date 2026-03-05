@@ -9,7 +9,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ApiError } from '@google/genai';
 import { AuthType } from '../core/contentGenerator.js';
 import { type HttpError, ModelNotFoundError } from './httpErrors.js';
-import { retryWithBackoff } from './retry.js';
+import { retryWithBackoff, isRetryableError } from './retry.js';
 import { setSimulate429 } from './testUtils.js';
 import { debugLogger } from './debugLogger.js';
 import {
@@ -812,6 +812,32 @@ describe('retryWithBackoff', () => {
         getAvailabilityContext: getContext,
       }).catch(() => {});
       expect(mockService.markTerminal).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Anthropic error handling', () => {
+    it('errors with status 429 are retryable', () => {
+      const e = new Error('rate limited');
+      (e as any).status = 429;
+      expect(isRetryableError(e)).toBe(true);
+    });
+
+    it('errors with status 529 are retryable', () => {
+      const e = new Error('overloaded');
+      (e as any).status = 529;
+      expect(isRetryableError(e)).toBe(true);
+    });
+
+    it('errors with status 400 are NOT retryable', () => {
+      const e = new Error('bad request');
+      (e as any).status = 400;
+      expect(isRetryableError(e)).toBe(false);
+    });
+
+    it('errors with response.status are retryable', () => {
+      const e = new Error('service unavailable');
+      (e as any).response = { status: 503 };
+      expect(isRetryableError(e)).toBe(true);
     });
   });
 });

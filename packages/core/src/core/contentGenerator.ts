@@ -23,8 +23,9 @@ import { InstallationManager } from '../utils/installationManager.js';
 import { FakeContentGenerator } from './fakeContentGenerator.js';
 import { parseCustomHeaders } from '../utils/customHeaderUtils.js';
 import { RecordingContentGenerator } from './recordingContentGenerator.js';
-import { getVersion, resolveModel } from '../../index.js';
+import { getVersion, resolveModel, isClaudeModel } from '../../index.js';
 import type { LlmRole } from '../telemetry/llmRole.js';
+import { ClaudeContentGenerator } from './claudeContentGenerator.js';
 
 /**
  * Interface abstracting the core functionalities for generating content and counting tokens.
@@ -205,6 +206,34 @@ export async function createContentGenerator(
       config.authType === AuthType.USE_GEMINI ||
       config.authType === AuthType.USE_VERTEX_AI
     ) {
+      // Route Claude models through the ClaudeContentGenerator adapter
+      if (isClaudeModel(model)) {
+        if (config.authType !== AuthType.USE_VERTEX_AI) {
+          throw new Error(
+            `Claude models require Vertex AI authentication. ` +
+              `Set GOOGLE_GENAI_USE_VERTEXAI=true, GOOGLE_CLOUD_PROJECT, and GOOGLE_CLOUD_LOCATION.`,
+          );
+        }
+        const projectId =
+          process.env['GOOGLE_CLOUD_PROJECT'] ||
+          process.env['GOOGLE_CLOUD_PROJECT_ID'] ||
+          '';
+        if (!projectId) {
+          throw new Error(
+            `GOOGLE_CLOUD_PROJECT must be set to use Claude models on Vertex AI.`,
+          );
+        }
+        const region = process.env['GOOGLE_CLOUD_LOCATION'] || '';
+        if (!region) {
+          throw new Error(
+            `GOOGLE_CLOUD_LOCATION must be set to use Claude models on Vertex AI ` +
+              `(e.g., global, us-east5, us-central1, europe-west1).`,
+          );
+        }
+        const claude = new ClaudeContentGenerator(projectId, region, model);
+        return new LoggingContentGenerator(claude, gcConfig);
+      }
+
       let headers: Record<string, string> = { ...baseHeaders };
       if (gcConfig?.getUsageStatisticsEnabled()) {
         const installationManager = new InstallationManager();

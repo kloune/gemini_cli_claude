@@ -34,6 +34,22 @@ export const GEMINI_MODEL_ALIAS_FLASH_LITE = 'flash-lite';
 
 export const DEFAULT_GEMINI_EMBEDDING_MODEL = 'gemini-embedding-001';
 
+// Claude models (available via Vertex AI)
+export const CLAUDE_OPUS_MODEL = 'claude-opus-4-6';
+export const CLAUDE_SONNET_MODEL = 'claude-sonnet-4-6';
+export const CLAUDE_HAIKU_MODEL = 'claude-haiku-4-5@20251001';
+
+export const VALID_CLAUDE_MODELS = new Set([
+  CLAUDE_OPUS_MODEL,
+  CLAUDE_SONNET_MODEL,
+  CLAUDE_HAIKU_MODEL,
+]);
+
+// Claude model aliases for user convenience.
+export const CLAUDE_MODEL_ALIAS_OPUS = 'claude-opus';
+export const CLAUDE_MODEL_ALIAS_SONNET = 'claude-sonnet';
+export const CLAUDE_MODEL_ALIAS_HAIKU = 'claude-haiku';
+
 // Cap the thinking at 8192 to prevent run-away thinking loops.
 export const DEFAULT_THINKING_MODE = 8192;
 
@@ -70,6 +86,15 @@ export function resolveModel(
     }
     case GEMINI_MODEL_ALIAS_FLASH_LITE: {
       return DEFAULT_GEMINI_FLASH_LITE_MODEL;
+    }
+    case CLAUDE_MODEL_ALIAS_OPUS: {
+      return CLAUDE_OPUS_MODEL;
+    }
+    case CLAUDE_MODEL_ALIAS_SONNET: {
+      return CLAUDE_SONNET_MODEL;
+    }
+    case CLAUDE_MODEL_ALIAS_HAIKU: {
+      return CLAUDE_HAIKU_MODEL;
     }
     default: {
       return requestedModel;
@@ -119,9 +144,28 @@ export function getDisplayString(model: string) {
       return PREVIEW_GEMINI_FLASH_MODEL;
     case PREVIEW_GEMINI_3_1_CUSTOM_TOOLS_MODEL:
       return PREVIEW_GEMINI_3_1_MODEL;
+    case CLAUDE_OPUS_MODEL:
+    case CLAUDE_MODEL_ALIAS_OPUS:
+      return 'Claude Opus 4.6';
+    case CLAUDE_SONNET_MODEL:
+    case CLAUDE_MODEL_ALIAS_SONNET:
+      return 'Claude Sonnet 4.6';
+    case CLAUDE_HAIKU_MODEL:
+    case CLAUDE_MODEL_ALIAS_HAIKU:
+      return 'Claude Haiku 4.5';
     default:
       return model;
   }
+}
+
+/**
+ * Checks if the model is a Claude model.
+ *
+ * @param model The model name to check.
+ * @returns True if the model is a Claude model.
+ */
+export function isClaudeModel(model: string): boolean {
+  return model.startsWith('claude-');
 }
 
 /**
