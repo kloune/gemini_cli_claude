@@ -1,3 +1,157 @@
+diff --git a/package-lock.json b/package-lock.json
+index 85448711c..c172c71d9 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -179,6 +179,36 @@
+         "node": ">=6.0.0"
+       }
+     },
++    "node_modules/@anthropic-ai/sdk": {
++      "version": "0.78.0",
++      "resolved": "https://registry.npmjs.org/@anthropic-ai/sdk/-/sdk-0.78.0.tgz",
++      "integrity": "sha512-PzQhR715td/m1UaaN5hHXjYB8Gl2lF9UVhrrGrZeysiF6Rb74Wc9GCB8hzLdzmQtBd1qe89F9OptgB9Za1Ib5w==",
++      "license": "MIT",
++      "dependencies": {
++        "json-schema-to-ts": "^3.1.1"
++      },
++      "bin": {
++        "anthropic-ai-sdk": "bin/cli"
++      },
++      "peerDependencies": {
++        "zod": "^3.25.0 || ^4.0.0"
++      },
++      "peerDependenciesMeta": {
++        "zod": {
++          "optional": true
++        }
++      }
++    },
++    "node_modules/@anthropic-ai/vertex-sdk": {
++      "version": "0.14.4",
++      "resolved": "https://registry.npmjs.org/@anthropic-ai/vertex-sdk/-/vertex-sdk-0.14.4.tgz",
++      "integrity": "sha512-BZUPRWghZxfSFtAxU563wH+jfWBPoedAwsVxG35FhmNsjeV8tyfN+lFriWhCpcZApxA4NdT6Soov+PzfnxxD5g==",
++      "license": "MIT",
++      "dependencies": {
++        "@anthropic-ai/sdk": ">=0.50.3 <1",
++        "google-auth-library": "^9.4.2"
++      }
++    },
+     "node_modules/@azu/format-text": {
+       "version": "1.0.2",
+       "resolved": "https://registry.npmjs.org/@azu/format-text/-/format-text-1.0.2.tgz",
+@@ -457,6 +487,15 @@
+         "node": ">=6.0.0"
+       }
+     },
++    "node_modules/@babel/runtime": {
++      "version": "7.28.6",
++      "resolved": "https://registry.npmjs.org/@babel/runtime/-/runtime-7.28.6.tgz",
++      "integrity": "sha512-05WQkdpL9COIMz4LjTxGpPNCdlpyimKppYNoJ5Di5EUObifl8t4tuLuUBBZEpoLYOmfvIWrsp9fCl0HoPRVTdA==",
++      "license": "MIT",
++      "engines": {
++        "node": ">=6.9.0"
++      }
++    },
+     "node_modules/@babel/template": {
+       "version": "7.27.2",
+       "resolved": "https://registry.npmjs.org/@babel/template/-/template-7.27.2.tgz",
+@@ -11076,6 +11115,19 @@
+         "node": "^18.17.0 || >=20.5.0"
+       }
+     },
++    "node_modules/json-schema-to-ts": {
++      "version": "3.1.1",
++      "resolved": "https://registry.npmjs.org/json-schema-to-ts/-/json-schema-to-ts-3.1.1.tgz",
++      "integrity": "sha512-+DWg8jCJG2TEnpy7kOm/7/AxaYoaRbjVB4LFZLySZlWn8exGs3A4OLJR966cVvU26N7X9TWxl+Jsw7dzAqKT6g==",
++      "license": "MIT",
++      "dependencies": {
++        "@babel/runtime": "^7.18.3",
++        "ts-algebra": "^2.0.0"
++      },
++      "engines": {
++        "node": ">=16"
++      }
++    },
+     "node_modules/json-schema-traverse": {
+       "version": "0.4.1",
+       "resolved": "https://registry.npmjs.org/json-schema-traverse/-/json-schema-traverse-0.4.1.tgz",
+@@ -16046,6 +16098,12 @@
+         "node": "10.* || >= 12.*"
+       }
+     },
++    "node_modules/ts-algebra": {
++      "version": "2.0.0",
++      "resolved": "https://registry.npmjs.org/ts-algebra/-/ts-algebra-2.0.0.tgz",
++      "integrity": "sha512-FPAhNPFMrkwz76P7cdjdmiShwMynZYN6SgOujD1urY4oNm80Ou9oMdmbR45LotcKOXoy7wSmHkRFE6Mxbrhefw==",
++      "license": "MIT"
++    },
+     "node_modules/ts-api-utils": {
+       "version": "2.4.0",
+       "resolved": "https://registry.npmjs.org/ts-api-utils/-/ts-api-utils-2.4.0.tgz",
+@@ -17448,6 +17506,7 @@
+       "license": "Apache-2.0",
+       "dependencies": {
+         "@a2a-js/sdk": "^0.3.8",
++        "@anthropic-ai/vertex-sdk": "^0.14.4",
+         "@google-cloud/logging": "^11.2.1",
+         "@google-cloud/opentelemetry-cloud-monitoring-exporter": "^0.21.0",
+         "@google-cloud/opentelemetry-cloud-trace-exporter": "^3.0.0",
+diff --git a/packages/cli/src/ui/components/ModelDialog.tsx b/packages/cli/src/ui/components/ModelDialog.tsx
+index 7d7fea4d8..7677454b6 100644
+--- a/packages/cli/src/ui/components/ModelDialog.tsx
++++ b/packages/cli/src/ui/components/ModelDialog.tsx
+@@ -16,6 +16,9 @@ import {
+   DEFAULT_GEMINI_FLASH_MODEL,
+   DEFAULT_GEMINI_FLASH_LITE_MODEL,
+   DEFAULT_GEMINI_MODEL_AUTO,
++  CLAUDE_OPUS_MODEL,
++  CLAUDE_SONNET_MODEL,
++  CLAUDE_HAIKU_MODEL,
+   ModelSlashCommandEvent,
+   logModelSlashCommand,
+   getDisplayString,
+@@ -56,6 +59,9 @@ export function ModelDialog({ onClose }: ModelDialogProps): React.JSX.Element {
+       PREVIEW_GEMINI_3_1_MODEL,
+       PREVIEW_GEMINI_3_1_CUSTOM_TOOLS_MODEL,
+       PREVIEW_GEMINI_FLASH_MODEL,
++      CLAUDE_OPUS_MODEL,
++      CLAUDE_SONNET_MODEL,
++      CLAUDE_HAIKU_MODEL,
+     ];
+     if (manualModels.includes(preferredModel)) {
+       return preferredModel;
+@@ -155,8 +161,30 @@ export function ModelDialog({ onClose }: ModelDialogProps): React.JSX.Element {
+         },
+       );
+     }
++
++    // Add Claude models when using Vertex AI auth
++    if (selectedAuthType === AuthType.USE_VERTEX_AI) {
++      list.push(
++        {
++          value: CLAUDE_OPUS_MODEL,
++          title: getDisplayString(CLAUDE_OPUS_MODEL),
++          key: CLAUDE_OPUS_MODEL,
++        },
++        {
++          value: CLAUDE_SONNET_MODEL,
++          title: getDisplayString(CLAUDE_SONNET_MODEL),
++          key: CLAUDE_SONNET_MODEL,
++        },
++        {
++          value: CLAUDE_HAIKU_MODEL,
++          title: getDisplayString(CLAUDE_HAIKU_MODEL),
++          key: CLAUDE_HAIKU_MODEL,
++        },
++      );
++    }
++
+     return list;
+-  }, [shouldShowPreviewModels, useGemini31, useCustomToolModel]);
++  }, [shouldShowPreviewModels, useGemini31, useCustomToolModel, selectedAuthType]);
+ 
+   const options = view === 'main' ? mainOptions : manualOptions;
+ 
 diff --git a/packages/core/package.json b/packages/core/package.json
 index 827c09bc6..e5eeef19e 100644
 --- a/packages/core/package.json
@@ -2276,3 +2430,2563 @@ index a16e823e7..fdfcfa6b8 100644
      return status === 429 || status === 499 || (status >= 500 && status < 600);
    }
  
+diff --git a/patch/README.txt b/patch/README.txt
+new file mode 100644
+index 000000000..3238b75d0
+--- /dev/null
++++ b/patch/README.txt
+@@ -0,0 +1,270 @@
++================================================================================
++  Claude Model Support via Vertex AI - Patch for Gemini CLI
++================================================================================
++
++PATCH FILE:   claude-support.patch
++BASE COMMIT:  717660997d652d62c89868272dff293aaa621965
++              feat(sandbox): add experimental LXC container sandbox support (#20735)
++BRANCH:       main
++DATE:         2026-03-05
++
++
++PREREQUISITES
++-------------
++
++1. Clone or checkout the gemini-cli repository at the base commit:
++
++     git clone https://github.com/google-gemini/gemini-cli.git
++     cd gemini-cli
++     git checkout 717660997d652d62c89868272dff293aaa621965
++
++2. Ensure Node.js >= 20 is installed.
++
++
++HOW TO APPLY THE PATCH
++----------------------
++
++From the repository root (gemini-cli/):
++
++     git apply patch/claude-support.patch
++
++If there are whitespace warnings, use:
++
++     git apply --whitespace=nowarn patch/claude-support.patch
++
++To preview what the patch will do without applying:
++
++     git apply --stat patch/claude-support.patch
++     git apply --check patch/claude-support.patch
++
++
++AFTER APPLYING
++--------------
++
++1. Install dependencies (the patch adds @anthropic-ai/vertex-sdk):
++
++     npm install
++
++2. Build:
++
++     npm run build
++
++3. Run tests:
++
++     cd packages/core
++     npx vitest run
++
++
++HOW TO REVERT THE PATCH
++------------------------
++
++     git apply -R patch/claude-support.patch
++     npm install
++
++
++WHAT THE PATCH CONTAINS
++-----------------------
++
++25 files changed (23 modified, 2 new), ~2400 lines.
++
++New files:
++  - packages/core/src/core/claudeContentGenerator.ts     (~580 lines)
++    Adapter implementing ContentGenerator interface for Claude on Vertex AI.
++    Translates Gemini API types <-> Anthropic Messages API types.
++
++  - packages/core/src/core/claudeContentGenerator.test.ts (~350 lines)
++    26 unit tests for the adapter.
++
++Modified files - Implementation:
++  - packages/core/package.json                  - Added @anthropic-ai/vertex-sdk dependency
++  - packages/core/src/config/models.ts          - Claude model constants, aliases, isClaudeModel()
++  - packages/core/src/config/defaultModelConfigs.ts - Claude model configs (opus, sonnet, haiku)
++  - packages/core/src/core/contentGenerator.ts  - Claude routing in createContentGenerator()
++  - packages/core/src/core/geminiChat.ts        - Skip thoughtSignatures for Claude
++  - packages/core/src/core/tokenLimits.ts       - 200k context window for Claude
++  - packages/core/src/config/config.ts          - Provider switch detection in setModel()
++  - packages/core/src/prompts/snippets.ts       - Model-aware preamble identity
++  - packages/core/src/prompts/promptProvider.ts - Pass model name to preamble
++  - packages/core/src/tools/web-search.ts       - External search API path for Claude
++  - packages/core/src/tools/web-fetch.ts        - Fallback/experimental path for Claude
++  - packages/core/src/utils/retry.ts            - Anthropic error retryability comment+guard
++  - packages/cli/src/ui/components/ModelDialog.tsx - Claude models in Vertex AI picker
++  - package-lock.json                           - Updated lockfile
++
++Modified files - Tests:
++  - packages/core/src/config/models.test.ts          - 17 new Claude model tests
++  - packages/core/src/core/contentGenerator.test.ts  - 4 new Claude auth tests
++  - packages/core/src/config/config.test.ts          - 3 new provider switching tests
++  - packages/core/src/utils/retry.test.ts            - 4 new Anthropic error tests
++  - packages/core/src/prompts/promptProvider.test.ts - 2 new preamble tests
++  - packages/core/src/tools/web-search.test.ts       - 2 new Claude search tests
++  - packages/core/src/tools/web-fetch.test.ts        - 2 new Claude fetch tests
++
++Modified files - Test infrastructure:
++  - packages/core/src/services/test-data/resolved-aliases.golden.json
++  - packages/core/src/services/test-data/resolved-aliases-retry.golden.json
++
++
++GCP SETUP — VERTEX AI AUTHENTICATION
++-------------------------------------
++
++Claude models on Vertex AI use the same GCP credentials as Gemini on Vertex AI.
++The Anthropic Vertex SDK authenticates via Google Application Default Credentials
++(ADC), which are set up through the gcloud CLI.
++
++### Step 1: Install the gcloud CLI
++
++  If not already installed, follow:
++  https://cloud.google.com/sdk/docs/install
++
++### Step 2: Authenticate with GCP
++
++  Log in to your Google Cloud account:
++
++    gcloud auth login
++
++  Set up Application Default Credentials (ADC) — this is what the SDK uses:
++
++    gcloud auth application-default login
++
++  Both commands open a browser for OAuth. The ADC credentials are stored at
++  ~/.config/gcloud/application_default_credentials.json and are automatically
++  picked up by the Anthropic Vertex SDK (via google-auth-library).
++
++### Step 3: Select or create a GCP project
++
++  List your projects:
++
++    gcloud projects list
++
++  Set your active project:
++
++    gcloud config set project YOUR_PROJECT_ID
++
++### Step 4: Enable the Vertex AI API
++
++  The Vertex AI API must be enabled on your project:
++
++    gcloud services enable aiplatform.googleapis.com --project=YOUR_PROJECT_ID
++
++### Step 5: Verify Claude model access
++
++  Claude models on Vertex AI require access through the Anthropic model garden.
++  Go to the Google Cloud Console:
++    https://console.cloud.google.com/vertex-ai/publishers/anthropic/model-garden
++
++  Enable the specific Claude model(s) you want to use. This grants your project
++  permission to call Claude via the Vertex AI API.
++
++### Step 6: Set environment variables
++
++  These are REQUIRED for Claude on Vertex AI:
++
++    export GOOGLE_GENAI_USE_VERTEXAI=true
++    export GOOGLE_CLOUD_PROJECT=YOUR_PROJECT_ID
++    export GOOGLE_CLOUD_LOCATION=REGION
++
++  GOOGLE_CLOUD_LOCATION determines the Vertex AI regional endpoint. Claude is
++  available in these regions (check for latest availability):
++    - global              (routes to nearest available region)
++    - us-east5            (Columbus, Ohio)
++    - us-central1         (Iowa)
++    - europe-west1        (Belgium)
++    - europe-west4        (Netherlands)
++    - asia-southeast1     (Singapore)
++
++  Example with all variables:
++
++    export GOOGLE_GENAI_USE_VERTEXAI=true
++    export GOOGLE_CLOUD_PROJECT=my-ai-project-123
++    export GOOGLE_CLOUD_LOCATION=us-east5
++
++  You can also add these to a .env file in your project root — gemini_cli
++  loads .env files automatically via dotenv.
++
++### Quick start (all commands together)
++
++    # One-time setup
++    gcloud auth login
++    gcloud auth application-default login
++    gcloud config set project YOUR_PROJECT_ID
++    gcloud services enable aiplatform.googleapis.com --project=YOUR_PROJECT_ID
++
++    # Set env vars (add to .bashrc or .env for persistence)
++    export GOOGLE_GENAI_USE_VERTEXAI=true
++    export GOOGLE_CLOUD_PROJECT=YOUR_PROJECT_ID
++    export GOOGLE_CLOUD_LOCATION=us-east5
++
++    # Run gemini_cli with Claude
++    gemini --model claude-sonnet
++
++
++USAGE
++-----
++
++After applying the patch and configuring GCP auth (see above), Claude models
++are available:
++
++  gemini --model claude-sonnet
++  gemini --model claude-opus
++  gemini --model claude-haiku
++
++Available models and aliases:
++  claude-opus    -> claude-opus-4-6
++  claude-sonnet  -> claude-sonnet-4-6
++  claude-haiku   -> claude-haiku-4-5@20251001
++
++Models can also be selected interactively via the /model command in the UI.
++Claude options appear when Vertex AI auth is active.
++
++You can switch models mid-session:
++  /model set claude-sonnet
++  /model set gemini-2.5-pro
++
++When switching between Gemini and Claude, the content generator is automatically
++recreated and conversation history is adapted.
++
++
++WEB SEARCH WITH CLAUDE
++-----------------------
++
++Claude does not support Gemini's built-in googleSearch tool. Instead, when
++Claude is active, web search uses the Google Custom Search JSON API.
++
++To enable web search with Claude:
++
++1. Create a Custom Search Engine at:
++   https://programmablesearchengine.google.com/
++
++2. Enable the Custom Search JSON API in your GCP project:
++   https://console.cloud.google.com/apis/api/customsearch.googleapis.com
++
++3. Create an API key for the Custom Search API:
++   https://console.cloud.google.com/apis/credentials
++
++4. Set environment variables:
++
++     export GOOGLE_CSE_API_KEY=your-custom-search-api-key
++     export GOOGLE_CSE_CX=your-custom-search-engine-id
++
++Without these variables, web search will return an error message explaining
++what needs to be configured.
++
++Web fetch (URL content retrieval) works without additional setup — it uses
++direct HTTP fetching when Claude is active, bypassing Gemini's urlContext tool.
++
++
++LIMITATIONS
++-----------
++
++- Claude models are ONLY available via Vertex AI auth (GOOGLE_GENAI_USE_VERTEXAI=true).
++  They cannot be used with a GEMINI_API_KEY.
++- Embedding features (memory) are not available with Claude. The embedContent
++  API will return a descriptive error.
++- Token counting uses character-based estimation (Claude has no countTokens API
++  on Vertex AI).
++- The fallback/model-switching system (for quota exhaustion) only operates with
++  Google OAuth auth, not Vertex AI. Claude quota errors will surface directly.
++- Cost: All auxiliary LLM calls (classifier, summarizer, compression, etc.)
++  also route through Claude when it is the active model. Claude Haiku is used
++  for lightweight calls, but may be more expensive than Gemini Flash Lite.
+diff --git a/patch/claude-support.patch b/patch/claude-support.patch
+new file mode 100644
+index 000000000..3afa2f7a6
+--- /dev/null
++++ b/patch/claude-support.patch
+@@ -0,0 +1,2278 @@
++diff --git a/packages/core/package.json b/packages/core/package.json
++index 827c09bc6..e5eeef19e 100644
++--- a/packages/core/package.json
+++++ b/packages/core/package.json
++@@ -22,6 +22,7 @@
++   ],
++   "dependencies": {
++     "@a2a-js/sdk": "^0.3.8",
+++    "@anthropic-ai/vertex-sdk": "^0.14.4",
++     "@google-cloud/logging": "^11.2.1",
++     "@google-cloud/opentelemetry-cloud-monitoring-exporter": "^0.21.0",
++     "@google-cloud/opentelemetry-cloud-trace-exporter": "^3.0.0",
++diff --git a/packages/core/src/config/config.test.ts b/packages/core/src/config/config.test.ts
++index 33a04b52a..ab9317028 100644
++--- a/packages/core/src/config/config.test.ts
+++++ b/packages/core/src/config/config.test.ts
++@@ -2215,6 +2215,60 @@ describe('Config getHooks', () => {
++       config.setModel(DEFAULT_GEMINI_MODEL, false);
++       expect(onModelChange).toHaveBeenCalledWith(DEFAULT_GEMINI_MODEL);
++     });
+++
+++    it('should trigger refreshAuth when switching from Gemini to Claude', async () => {
+++      const config = new Config(baseParams);
+++
+++      // Set up contentGeneratorConfig with authType via refreshAuth
+++      vi.mocked(createContentGeneratorConfig).mockResolvedValue({
+++        authType: AuthType.USE_VERTEX_AI,
+++      } as Partial<ContentGeneratorConfig> as ContentGeneratorConfig);
+++      await config.refreshAuth(AuthType.USE_VERTEX_AI);
+++
+++      const refreshSpy = vi.spyOn(config, 'refreshAuth');
+++
+++      // Set a Gemini model first
+++      config.setModel('gemini-2.5-pro');
+++      expect(refreshSpy).not.toHaveBeenCalled();
+++
+++      // Switch to Claude - should trigger refreshAuth
+++      config.setModel('claude-sonnet-4-6');
+++      expect(refreshSpy).toHaveBeenCalledWith(AuthType.USE_VERTEX_AI);
+++    });
+++
+++    it('should NOT trigger refreshAuth when switching between Claude models', async () => {
+++      const config = new Config(baseParams);
+++
+++      // Set up contentGeneratorConfig with authType via refreshAuth
+++      vi.mocked(createContentGeneratorConfig).mockResolvedValue({
+++        authType: AuthType.USE_VERTEX_AI,
+++      } as Partial<ContentGeneratorConfig> as ContentGeneratorConfig);
+++      await config.refreshAuth(AuthType.USE_VERTEX_AI);
+++
+++      // Set to Claude first
+++      config.setModel('claude-sonnet-4-6');
+++
+++      const refreshSpy = vi.spyOn(config, 'refreshAuth');
+++
+++      // Switch between Claude models
+++      config.setModel('claude-opus-4-6');
+++      expect(refreshSpy).not.toHaveBeenCalled();
+++    });
+++
+++    it('should NOT trigger refreshAuth when switching between Gemini models', async () => {
+++      const config = new Config(baseParams);
+++
+++      // Set up contentGeneratorConfig with authType via refreshAuth
+++      vi.mocked(createContentGeneratorConfig).mockResolvedValue({
+++        authType: AuthType.USE_GEMINI,
+++      } as Partial<ContentGeneratorConfig> as ContentGeneratorConfig);
+++      await config.refreshAuth(AuthType.USE_GEMINI);
+++
+++      const refreshSpy = vi.spyOn(config, 'refreshAuth');
+++
+++      config.setModel('gemini-2.5-flash');
+++      expect(refreshSpy).not.toHaveBeenCalled();
+++    });
++   });
++ });
++ 
++diff --git a/packages/core/src/config/config.ts b/packages/core/src/config/config.ts
++index 8c341073e..a14275f8c 100644
++--- a/packages/core/src/config/config.ts
+++++ b/packages/core/src/config/config.ts
++@@ -56,6 +56,7 @@ import {
++   DEFAULT_GEMINI_MODEL,
++   DEFAULT_GEMINI_MODEL_AUTO,
++   isAutoModel,
+++  isClaudeModel,
++   isPreviewModel,
++   PREVIEW_GEMINI_FLASH_MODEL,
++   PREVIEW_GEMINI_MODEL,
++@@ -1398,6 +1399,7 @@ export class Config implements McpContext {
++   }
++ 
++   setModel(newModel: string, isTemporary: boolean = true): void {
+++    const oldModel = this.model;
++     if (this.model !== newModel || this._activeModel !== newModel) {
++       this.model = newModel;
++       // When the user explicitly sets a model, that becomes the active model.
++@@ -1408,6 +1410,18 @@ export class Config implements McpContext {
++       this.onModelChange(newModel);
++     }
++     this.modelAvailabilityService.reset();
+++
+++    // Recreate content generator when switching between Gemini and Claude providers
+++    const providerChanged =
+++      isClaudeModel(oldModel) !== isClaudeModel(newModel);
+++    if (providerChanged && this.contentGeneratorConfig?.authType) {
+++      // Strip thought signatures when switching providers
+++      this.geminiClient.stripThoughtsFromHistory();
+++      // refreshAuth is async but safe here: GeminiChat.sendMessageStream()
+++      // serializes via sendPromise, so the next API call won't fire until
+++      // after the model dialog closes and the user types a new message.
+++      void this.refreshAuth(this.contentGeneratorConfig.authType);
+++    }
++   }
++ 
++   activateFallbackMode(model: string): void {
++diff --git a/packages/core/src/config/defaultModelConfigs.ts b/packages/core/src/config/defaultModelConfigs.ts
++index 5344aa442..1cdc218c6 100644
++--- a/packages/core/src/config/defaultModelConfigs.ts
+++++ b/packages/core/src/config/defaultModelConfigs.ts
++@@ -89,6 +89,33 @@ export const DEFAULT_MODEL_CONFIGS: ModelConfigServiceConfig = {
++         model: 'gemini-2.5-flash-lite',
++       },
++     },
+++    'claude-opus-4-6': {
+++      extends: 'base',
+++      modelConfig: {
+++        model: 'claude-opus-4-6',
+++        generateContentConfig: {
+++          temperature: 1,
+++        },
+++      },
+++    },
+++    'claude-sonnet-4-6': {
+++      extends: 'base',
+++      modelConfig: {
+++        model: 'claude-sonnet-4-6',
+++        generateContentConfig: {
+++          temperature: 1,
+++        },
+++      },
+++    },
+++    'claude-haiku-4-5@20251001': {
+++      extends: 'base',
+++      modelConfig: {
+++        model: 'claude-haiku-4-5@20251001',
+++        generateContentConfig: {
+++          temperature: 1,
+++        },
+++      },
+++    },
++     // Bases for the internal model configs.
++     'gemini-2.5-flash-base': {
++       extends: 'base',
++diff --git a/packages/core/src/config/models.test.ts b/packages/core/src/config/models.test.ts
++index 333715115..bda84e8af 100644
++--- a/packages/core/src/config/models.test.ts
+++++ b/packages/core/src/config/models.test.ts
++@@ -30,6 +30,13 @@ import {
++   PREVIEW_GEMINI_3_1_CUSTOM_TOOLS_MODEL,
++   isPreviewModel,
++   isProModel,
+++  CLAUDE_OPUS_MODEL,
+++  CLAUDE_SONNET_MODEL,
+++  CLAUDE_HAIKU_MODEL,
+++  CLAUDE_MODEL_ALIAS_OPUS,
+++  CLAUDE_MODEL_ALIAS_SONNET,
+++  CLAUDE_MODEL_ALIAS_HAIKU,
+++  isClaudeModel,
++ } from './models.js';
++ 
++ describe('isPreviewModel', () => {
++@@ -78,6 +85,12 @@ describe('isCustomModel', () => {
++     expect(isCustomModel(GEMINI_MODEL_ALIAS_AUTO)).toBe(false);
++     expect(isCustomModel(GEMINI_MODEL_ALIAS_PRO)).toBe(false);
++   });
+++
+++  it('should return true for Claude models', () => {
+++    expect(isCustomModel(CLAUDE_OPUS_MODEL)).toBe(true);
+++    expect(isCustomModel(CLAUDE_SONNET_MODEL)).toBe(true);
+++    expect(isCustomModel(CLAUDE_HAIKU_MODEL)).toBe(true);
+++  });
++ });
++ 
++ describe('supportsModernFeatures', () => {
++@@ -103,6 +116,12 @@ describe('supportsModernFeatures', () => {
++     expect(supportsModernFeatures(GEMINI_MODEL_ALIAS_PRO)).toBe(true);
++     expect(supportsModernFeatures(GEMINI_MODEL_ALIAS_AUTO)).toBe(true);
++   });
+++
+++  it('should return true for Claude models', () => {
+++    expect(supportsModernFeatures(CLAUDE_OPUS_MODEL)).toBe(true);
+++    expect(supportsModernFeatures(CLAUDE_SONNET_MODEL)).toBe(true);
+++    expect(supportsModernFeatures(CLAUDE_HAIKU_MODEL)).toBe(true);
+++  });
++ });
++ 
++ describe('isGemini3Model', () => {
++@@ -126,6 +145,12 @@ describe('isGemini3Model', () => {
++   it('should return false for arbitrary strings', () => {
++     expect(isGemini3Model('gpt-4')).toBe(false);
++   });
+++
+++  it('should return false for Claude models', () => {
+++    expect(isGemini3Model(CLAUDE_OPUS_MODEL)).toBe(false);
+++    expect(isGemini3Model(CLAUDE_SONNET_MODEL)).toBe(false);
+++    expect(isGemini3Model(CLAUDE_HAIKU_MODEL)).toBe(false);
+++  });
++ });
++ 
++ describe('getDisplayString', () => {
++@@ -161,6 +186,20 @@ describe('getDisplayString', () => {
++       DEFAULT_GEMINI_FLASH_LITE_MODEL,
++     );
++   });
+++
+++  it('should return display names for Claude models', () => {
+++    expect(getDisplayString(CLAUDE_OPUS_MODEL)).toBe('Claude Opus 4.6');
+++    expect(getDisplayString(CLAUDE_SONNET_MODEL)).toBe('Claude Sonnet 4.6');
+++    expect(getDisplayString(CLAUDE_HAIKU_MODEL)).toBe('Claude Haiku 4.5');
+++  });
+++
+++  it('should return display names for Claude aliases', () => {
+++    expect(getDisplayString(CLAUDE_MODEL_ALIAS_OPUS)).toBe('Claude Opus 4.6');
+++    expect(getDisplayString(CLAUDE_MODEL_ALIAS_SONNET)).toBe(
+++      'Claude Sonnet 4.6',
+++    );
+++    expect(getDisplayString(CLAUDE_MODEL_ALIAS_HAIKU)).toBe('Claude Haiku 4.5');
+++  });
++ });
++ 
++ describe('supportsMultimodalFunctionResponse', () => {
++@@ -216,6 +255,18 @@ describe('resolveModel', () => {
++       const model = resolveModel(customModel);
++       expect(model).toBe(customModel);
++     });
+++
+++    it('should resolve Claude aliases to concrete model names', () => {
+++      expect(resolveModel(CLAUDE_MODEL_ALIAS_OPUS)).toBe(CLAUDE_OPUS_MODEL);
+++      expect(resolveModel(CLAUDE_MODEL_ALIAS_SONNET)).toBe(CLAUDE_SONNET_MODEL);
+++      expect(resolveModel(CLAUDE_MODEL_ALIAS_HAIKU)).toBe(CLAUDE_HAIKU_MODEL);
+++    });
+++
+++    it('should return concrete Claude model names unchanged', () => {
+++      expect(resolveModel(CLAUDE_OPUS_MODEL)).toBe(CLAUDE_OPUS_MODEL);
+++      expect(resolveModel(CLAUDE_SONNET_MODEL)).toBe(CLAUDE_SONNET_MODEL);
+++      expect(resolveModel(CLAUDE_HAIKU_MODEL)).toBe(CLAUDE_HAIKU_MODEL);
+++    });
++   });
++ });
++ 
++@@ -243,6 +294,12 @@ describe('isGemini2Model', () => {
++   it('should return false for arbitrary strings', () => {
++     expect(isGemini2Model('gpt-4')).toBe(false);
++   });
+++
+++  it('should return false for Claude models', () => {
+++    expect(isGemini2Model(CLAUDE_OPUS_MODEL)).toBe(false);
+++    expect(isGemini2Model(CLAUDE_SONNET_MODEL)).toBe(false);
+++    expect(isGemini2Model(CLAUDE_HAIKU_MODEL)).toBe(false);
+++  });
++ });
++ 
++ describe('isAutoModel', () => {
++@@ -357,3 +414,24 @@ describe('isActiveModel', () => {
++     ).toBe(false);
++   });
++ });
+++
+++describe('isClaudeModel', () => {
+++  it('should return true for concrete Claude models', () => {
+++    expect(isClaudeModel(CLAUDE_OPUS_MODEL)).toBe(true);
+++    expect(isClaudeModel(CLAUDE_SONNET_MODEL)).toBe(true);
+++    expect(isClaudeModel(CLAUDE_HAIKU_MODEL)).toBe(true);
+++  });
+++
+++  it('should return true for Claude aliases', () => {
+++    expect(isClaudeModel(CLAUDE_MODEL_ALIAS_OPUS)).toBe(true);
+++    expect(isClaudeModel(CLAUDE_MODEL_ALIAS_SONNET)).toBe(true);
+++    expect(isClaudeModel(CLAUDE_MODEL_ALIAS_HAIKU)).toBe(true);
+++  });
+++
+++  it('should return false for Gemini models and other strings', () => {
+++    expect(isClaudeModel('gemini-2.5-pro')).toBe(false);
+++    expect(isClaudeModel('gemini-3-pro-preview')).toBe(false);
+++    expect(isClaudeModel('')).toBe(false);
+++    expect(isClaudeModel('not-claude')).toBe(false);
+++  });
+++});
++diff --git a/packages/core/src/config/models.ts b/packages/core/src/config/models.ts
++index 54ea06356..a49eee292 100644
++--- a/packages/core/src/config/models.ts
+++++ b/packages/core/src/config/models.ts
++@@ -34,6 +34,22 @@ export const GEMINI_MODEL_ALIAS_FLASH_LITE = 'flash-lite';
++ 
++ export const DEFAULT_GEMINI_EMBEDDING_MODEL = 'gemini-embedding-001';
++ 
+++// Claude models (available via Vertex AI)
+++export const CLAUDE_OPUS_MODEL = 'claude-opus-4-6';
+++export const CLAUDE_SONNET_MODEL = 'claude-sonnet-4-6';
+++export const CLAUDE_HAIKU_MODEL = 'claude-haiku-4-5@20251001';
+++
+++export const VALID_CLAUDE_MODELS = new Set([
+++  CLAUDE_OPUS_MODEL,
+++  CLAUDE_SONNET_MODEL,
+++  CLAUDE_HAIKU_MODEL,
+++]);
+++
+++// Claude model aliases for user convenience.
+++export const CLAUDE_MODEL_ALIAS_OPUS = 'claude-opus';
+++export const CLAUDE_MODEL_ALIAS_SONNET = 'claude-sonnet';
+++export const CLAUDE_MODEL_ALIAS_HAIKU = 'claude-haiku';
+++
++ // Cap the thinking at 8192 to prevent run-away thinking loops.
++ export const DEFAULT_THINKING_MODE = 8192;
++ 
++@@ -71,6 +87,15 @@ export function resolveModel(
++     case GEMINI_MODEL_ALIAS_FLASH_LITE: {
++       return DEFAULT_GEMINI_FLASH_LITE_MODEL;
++     }
+++    case CLAUDE_MODEL_ALIAS_OPUS: {
+++      return CLAUDE_OPUS_MODEL;
+++    }
+++    case CLAUDE_MODEL_ALIAS_SONNET: {
+++      return CLAUDE_SONNET_MODEL;
+++    }
+++    case CLAUDE_MODEL_ALIAS_HAIKU: {
+++      return CLAUDE_HAIKU_MODEL;
+++    }
++     default: {
++       return requestedModel;
++     }
++@@ -119,11 +144,30 @@ export function getDisplayString(model: string) {
++       return PREVIEW_GEMINI_FLASH_MODEL;
++     case PREVIEW_GEMINI_3_1_CUSTOM_TOOLS_MODEL:
++       return PREVIEW_GEMINI_3_1_MODEL;
+++    case CLAUDE_OPUS_MODEL:
+++    case CLAUDE_MODEL_ALIAS_OPUS:
+++      return 'Claude Opus 4.6';
+++    case CLAUDE_SONNET_MODEL:
+++    case CLAUDE_MODEL_ALIAS_SONNET:
+++      return 'Claude Sonnet 4.6';
+++    case CLAUDE_HAIKU_MODEL:
+++    case CLAUDE_MODEL_ALIAS_HAIKU:
+++      return 'Claude Haiku 4.5';
++     default:
++       return model;
++   }
++ }
++ 
+++/**
+++ * Checks if the model is a Claude model.
+++ *
+++ * @param model The model name to check.
+++ * @returns True if the model is a Claude model.
+++ */
+++export function isClaudeModel(model: string): boolean {
+++  return model.startsWith('claude-');
+++}
+++
++ /**
++  * Checks if the model is a preview model.
++  *
++diff --git a/packages/core/src/core/claudeContentGenerator.test.ts b/packages/core/src/core/claudeContentGenerator.test.ts
++new file mode 100644
++index 000000000..9af182cca
++--- /dev/null
+++++ b/packages/core/src/core/claudeContentGenerator.test.ts
++@@ -0,0 +1,465 @@
+++/**
+++ * @license
+++ * Copyright 2025 Google LLC
+++ * SPDX-License-Identifier: Apache-2.0
+++ */
+++
+++import { describe, it, expect, vi, beforeEach } from 'vitest';
+++import { FinishReason } from '@google/genai';
+++import type { GenerateContentParameters } from '@google/genai';
+++
+++const mockCreate = vi.fn();
+++const mockStream = vi.fn();
+++vi.mock('@anthropic-ai/vertex-sdk', () => ({
+++  AnthropicVertex: vi.fn().mockImplementation(() => ({
+++    messages: { create: mockCreate, stream: mockStream },
+++  })),
+++}));
+++
+++import { ClaudeContentGenerator } from './claudeContentGenerator.js';
+++import { LlmRole } from '../telemetry/llmRole.js';
+++
+++function makeGenerator() {
+++  return new ClaudeContentGenerator('test-project', 'us-east5', 'claude-sonnet-4-6');
+++}
+++
+++function makeRequest(overrides: Partial<GenerateContentParameters> = {}): GenerateContentParameters {
+++  return {
+++    model: 'claude-sonnet-4-6',
+++    contents: [
+++      {
+++        role: 'user',
+++        parts: [{ text: 'hello' }],
+++      },
+++    ],
+++    config: {},
+++    ...overrides,
+++  } as GenerateContentParameters;
+++}
+++
+++const defaultResponse = {
+++  content: [{ type: 'text', text: 'response' }],
+++  stop_reason: 'end_turn',
+++  usage: { input_tokens: 10, output_tokens: 5 },
+++};
+++
+++describe('ClaudeContentGenerator', () => {
+++  beforeEach(() => {
+++    vi.clearAllMocks();
+++    mockCreate.mockResolvedValue(defaultResponse);
+++  });
+++
+++  const generator = makeGenerator();
+++
+++  async function callAndGetParams(req: GenerateContentParameters) {
+++    await generator.generateContent(req, 'test-prompt', LlmRole.UTILITY_TOOL);
+++    return mockCreate.mock.calls[0][0];
+++  }
+++
+++  describe('Request Translation', () => {
+++    it('maps user role to user and model role to assistant', async () => {
+++      const req = makeRequest({
+++        contents: [
+++          { role: 'user', parts: [{ text: 'hi' }] },
+++          { role: 'model', parts: [{ text: 'hello' }] },
+++        ],
+++      });
+++      const params = await callAndGetParams(req);
+++      expect(params.messages[0].role).toBe('user');
+++      expect(params.messages[1].role).toBe('assistant');
+++    });
+++
+++    it('translates text parts correctly', async () => {
+++      const req = makeRequest({
+++        contents: [{ role: 'user', parts: [{ text: 'test message' }] }],
+++      });
+++      const params = await callAndGetParams(req);
+++      expect(params.messages[0].content).toEqual([
+++        { type: 'text', text: 'test message' },
+++      ]);
+++    });
+++
+++    it('translates functionCall to tool_use', async () => {
+++      const req = makeRequest({
+++        contents: [
+++          {
+++            role: 'model',
+++            parts: [
+++              {
+++                functionCall: {
+++                  id: 'call-1',
+++                  name: 'read_file',
+++                  args: { path: '/tmp/test' },
+++                },
+++              },
+++            ],
+++          },
+++        ],
+++      });
+++      // Prepend user message since model can't be first
+++      req.contents = [
+++        { role: 'user', parts: [{ text: 'start' }] },
+++        ...(req.contents as unknown[]),
+++      ];
+++      const params = await callAndGetParams(req);
+++      const assistantContent = params.messages[1].content;
+++      expect(assistantContent[0].type).toBe('tool_use');
+++      expect(assistantContent[0].id).toBe('call-1');
+++      expect(assistantContent[0].name).toBe('read_file');
+++      expect(assistantContent[0].input).toEqual({ path: '/tmp/test' });
+++    });
+++
+++    it('translates functionResponse to tool_result with stringified object', async () => {
+++      const responseObj = { result: 'ok' };
+++      const req = makeRequest({
+++        contents: [
+++          {
+++            role: 'user',
+++            parts: [
+++              {
+++                functionResponse: {
+++                  id: 'call-1',
+++                  name: 'read_file',
+++                  response: responseObj,
+++                },
+++              },
+++            ],
+++          },
+++        ],
+++      });
+++      const params = await callAndGetParams(req);
+++      const block = params.messages[0].content[0];
+++      expect(block.type).toBe('tool_result');
+++      expect(block.tool_use_id).toBe('call-1');
+++      expect(block.content).toBe(JSON.stringify(responseObj));
+++    });
+++
+++    it('translates functionResponse with string response as-is', async () => {
+++      const req = makeRequest({
+++        contents: [
+++          {
+++            role: 'user',
+++            parts: [
+++              {
+++                functionResponse: {
+++                  id: 'call-2',
+++                  name: 'run_cmd',
+++                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+++                  response: 'done' as any,
+++                },
+++              },
+++            ],
+++          },
+++        ],
+++      });
+++      const params = await callAndGetParams(req);
+++      expect(params.messages[0].content[0].content).toBe('done');
+++    });
+++
+++    it('strips thought parts from messages', async () => {
+++      const req = makeRequest({
+++        contents: [
+++          {
+++            role: 'model',
+++            parts: [
+++              { text: 'thinking...', thought: true },
+++              { text: 'visible answer' },
+++            ],
+++          },
+++        ],
+++      });
+++      req.contents = [
+++        { role: 'user', parts: [{ text: 'q' }] },
+++        ...(req.contents as unknown[]),
+++      ];
+++      const params = await callAndGetParams(req);
+++      const assistantBlocks = params.messages[1].content;
+++      expect(assistantBlocks).toHaveLength(1);
+++      expect(assistantBlocks[0].text).toBe('visible answer');
+++    });
+++
+++    it('passes system instruction as system param', async () => {
+++      const req = makeRequest({
+++        config: {
+++          systemInstruction: {
+++            role: 'user',
+++            parts: [{ text: 'You are helpful.' }],
+++          },
+++        },
+++        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+++      } as any);
+++      const params = await callAndGetParams(req);
+++      expect(params.system).toBe('You are helpful.');
+++    });
+++
+++    it('merges consecutive same-role messages', async () => {
+++      const req = makeRequest({
+++        contents: [
+++          { role: 'user', parts: [{ text: 'first' }] },
+++          { role: 'user', parts: [{ text: 'second' }] },
+++        ],
+++      });
+++      const params = await callAndGetParams(req);
+++      expect(params.messages).toHaveLength(1);
+++      expect(params.messages[0].content).toHaveLength(2);
+++      expect(params.messages[0].content[0].text).toBe('first');
+++      expect(params.messages[0].content[1].text).toBe('second');
+++    });
+++  });
+++
+++  describe('Tool Translation', () => {
+++    it('translates functionDeclarations to tools with input_schema', async () => {
+++      const req = makeRequest({
+++        config: {
+++          tools: [
+++            {
+++              functionDeclarations: [
+++                {
+++                  name: 'read_file',
+++                  description: 'Reads a file',
+++                  parameters: {
+++                    type: 'object',
+++                    properties: { path: { type: 'string' } },
+++                  },
+++                },
+++              ],
+++            },
+++          ],
+++        },
+++        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+++      } as any);
+++      const params = await callAndGetParams(req);
+++      expect(params.tools).toHaveLength(1);
+++      expect(params.tools[0].name).toBe('read_file');
+++      expect(params.tools[0].description).toBe('Reads a file');
+++      expect(params.tools[0].input_schema).toEqual({
+++        type: 'object',
+++        properties: { path: { type: 'string' } },
+++      });
+++    });
+++
+++    it('filters out googleSearch tools', async () => {
+++      const req = makeRequest({
+++        config: {
+++          tools: [
+++            { googleSearch: {} },
+++            {
+++              functionDeclarations: [
+++                { name: 'keep_me', description: 'stays' },
+++              ],
+++            },
+++          ],
+++        },
+++        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+++      } as any);
+++      const params = await callAndGetParams(req);
+++      expect(params.tools).toHaveLength(1);
+++      expect(params.tools[0].name).toBe('keep_me');
+++    });
+++
+++    it('filters out urlContext tools', async () => {
+++      const req = makeRequest({
+++        config: {
+++          tools: [{ urlContext: {} }],
+++        },
+++        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+++      } as any);
+++      const params = await callAndGetParams(req);
+++      expect(params.tools).toBeUndefined();
+++    });
+++  });
+++
+++  describe('Response Translation', () => {
+++    it('translates text content block to Part with text', async () => {
+++      mockCreate.mockResolvedValue({
+++        content: [{ type: 'text', text: 'hello world' }],
+++        stop_reason: 'end_turn',
+++        usage: { input_tokens: 5, output_tokens: 3 },
+++      });
+++      const result = await generator.generateContent(
+++        makeRequest(),
+++        'test-prompt',
+++        LlmRole.UTILITY_TOOL,
+++      );
+++      const parts = result.candidates![0].content!.parts!;
+++      expect(parts[0].text).toBe('hello world');
+++    });
+++
+++    it('translates tool_use block to functionCall Part', async () => {
+++      mockCreate.mockResolvedValue({
+++        content: [
+++          {
+++            type: 'tool_use',
+++            id: 'tu-1',
+++            name: 'write_file',
+++            input: { path: '/tmp/f', content: 'data' },
+++          },
+++        ],
+++        stop_reason: 'tool_use',
+++        usage: { input_tokens: 8, output_tokens: 4 },
+++      });
+++      const result = await generator.generateContent(
+++        makeRequest(),
+++        'test-prompt',
+++        LlmRole.UTILITY_TOOL,
+++      );
+++      const fc = result.candidates![0].content!.parts![0].functionCall!;
+++      expect(fc.id).toBe('tu-1');
+++      expect(fc.name).toBe('write_file');
+++      expect(fc.args).toEqual({ path: '/tmp/f', content: 'data' });
+++    });
+++
+++    it('maps stop_reason end_turn to STOP', async () => {
+++      mockCreate.mockResolvedValue({
+++        ...defaultResponse,
+++        stop_reason: 'end_turn',
+++      });
+++      const result = await generator.generateContent(
+++        makeRequest(),
+++        'test-prompt',
+++        LlmRole.UTILITY_TOOL,
+++      );
+++      expect(result.candidates![0].finishReason).toBe(FinishReason.STOP);
+++    });
+++
+++    it('maps stop_reason max_tokens to MAX_TOKENS', async () => {
+++      mockCreate.mockResolvedValue({
+++        ...defaultResponse,
+++        stop_reason: 'max_tokens',
+++      });
+++      const result = await generator.generateContent(
+++        makeRequest(),
+++        'test-prompt',
+++        LlmRole.UTILITY_TOOL,
+++      );
+++      expect(result.candidates![0].finishReason).toBe(FinishReason.MAX_TOKENS);
+++    });
+++
+++    it('populates usage metadata', async () => {
+++      const result = await generator.generateContent(
+++        makeRequest(),
+++        'test-prompt',
+++        LlmRole.UTILITY_TOOL,
+++      );
+++      expect(result.usageMetadata!.promptTokenCount).toBe(10);
+++      expect(result.usageMetadata!.candidatesTokenCount).toBe(5);
+++      expect(result.usageMetadata!.totalTokenCount).toBe(15);
+++    });
+++  });
+++
+++  describe('JSON Mode', () => {
+++    it('adds JSON instruction to system when responseMimeType is application/json', async () => {
+++      const req = makeRequest({
+++        config: {
+++          systemInstruction: 'Base instruction.',
+++          responseMimeType: 'application/json',
+++        },
+++        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+++      } as any);
+++      const params = await callAndGetParams(req);
+++      expect(params.system).toContain('Base instruction.');
+++      expect(params.system).toContain(
+++        'You MUST respond with valid JSON only',
+++      );
+++    });
+++  });
+++
+++  describe('Thinking Config', () => {
+++    it('enables thinking when thinkingBudget > 0', async () => {
+++      const req = makeRequest({
+++        config: {
+++          thinkingConfig: { thinkingBudget: 2048 },
+++        },
+++        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+++      } as any);
+++      const params = await callAndGetParams(req);
+++      expect(params.thinking).toEqual({
+++        type: 'enabled',
+++        budget_tokens: 2048,
+++      });
+++    });
+++
+++    it('does NOT enable thinking when thinkingBudget is 0', async () => {
+++      const req = makeRequest({
+++        config: {
+++          thinkingConfig: { thinkingBudget: 0 },
+++        },
+++        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+++      } as any);
+++      const params = await callAndGetParams(req);
+++      expect(params.thinking).toBeUndefined();
+++    });
+++
+++    it('enables thinking with default budget when includeThoughts is set', async () => {
+++      const req = makeRequest({
+++        config: {
+++          thinkingConfig: { includeThoughts: true },
+++        },
+++        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+++      } as any);
+++      const params = await callAndGetParams(req);
+++      expect(params.thinking).toEqual({
+++        type: 'enabled',
+++        budget_tokens: 4096,
+++      });
+++    });
+++  });
+++
+++  describe('Model Mapping', () => {
+++    it('maps gemini-2.5-flash to claude-haiku', async () => {
+++      const req = makeRequest({ model: 'gemini-2.5-flash' });
+++      const params = await callAndGetParams(req);
+++      expect(params.model).toContain('haiku');
+++    });
+++
+++    it('maps gemini-3-pro-preview to user model', async () => {
+++      const req = makeRequest({ model: 'gemini-3-pro-preview' });
+++      const params = await callAndGetParams(req);
+++      expect(params.model).toBe('claude-sonnet-4-6');
+++    });
+++
+++    it('passes through claude model names', async () => {
+++      const req = makeRequest({ model: 'claude-sonnet-4-6' });
+++      const params = await callAndGetParams(req);
+++      expect(params.model).toBe('claude-sonnet-4-6');
+++    });
+++  });
+++
+++  describe('countTokens', () => {
+++    it('returns an estimate without error', async () => {
+++      const gen = makeGenerator();
+++      const result = await gen.countTokens({
+++        model: 'claude-sonnet-4-6',
+++        contents: [{ role: 'user', parts: [{ text: 'hello world' }] }],
+++        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+++      } as any);
+++      expect(result.totalTokens).toBeGreaterThanOrEqual(0);
+++    });
+++  });
+++
+++  describe('embedContent', () => {
+++    it('throws a descriptive error', async () => {
+++      const gen = makeGenerator();
+++      await expect(
+++        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+++        gen.embedContent({} as any),
+++      ).rejects.toThrow('Embedding is not supported with Claude models');
+++    });
+++  });
+++
+++  describe('AbortSignal', () => {
+++    it('forwards abort signal to create call', async () => {
+++      const controller = new AbortController();
+++      const req = makeRequest({
+++        config: {
+++          abortSignal: controller.signal,
+++        },
+++        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+++      } as any);
+++      await generator.generateContent(req, 'test-prompt', LlmRole.UTILITY_TOOL);
+++      const requestOptions = mockCreate.mock.calls[0][1];
+++      expect(requestOptions).toBeDefined();
+++      expect(requestOptions.signal).toBe(controller.signal);
+++    });
+++  });
+++});
++diff --git a/packages/core/src/core/claudeContentGenerator.ts b/packages/core/src/core/claudeContentGenerator.ts
++new file mode 100644
++index 000000000..d5ca4db53
++--- /dev/null
+++++ b/packages/core/src/core/claudeContentGenerator.ts
++@@ -0,0 +1,651 @@
+++/**
+++ * @license
+++ * Copyright 2025 Google LLC
+++ * SPDX-License-Identifier: Apache-2.0
+++ */
+++
+++import {
+++  FinishReason,
+++  type GenerateContentParameters,
+++  type GenerateContentResponse,
+++  type CountTokensParameters,
+++  type CountTokensResponse,
+++  type EmbedContentParameters,
+++  type EmbedContentResponse,
+++  type Content,
+++  type Part,
+++  type Candidate,
+++  type GenerateContentResponseUsageMetadata,
+++} from '@google/genai';
+++import type { ContentGenerator } from './contentGenerator.js';
+++import type { LlmRole } from '../telemetry/llmRole.js';
+++import { estimateTokenCountSync } from '../utils/tokenCalculation.js';
+++import { debugLogger } from '../utils/debugLogger.js';
+++import {
+++  CLAUDE_SONNET_MODEL,
+++  CLAUDE_HAIKU_MODEL,
+++} from '../config/models.js';
+++
+++// Vertex SDK for the client class
+++type AnthropicVertexType = import('@anthropic-ai/vertex-sdk').AnthropicVertex;
+++
+++// Types from the base Anthropic SDK (transitive dependency of vertex-sdk)
+++type MessageCreateParamsBase =
+++  import('@anthropic-ai/sdk/resources/messages/messages').MessageCreateParamsBase;
+++type MessageCreateParamsType =
+++  import('@anthropic-ai/sdk/resources/messages/messages').MessageCreateParamsNonStreaming;
+++type MessageParamType =
+++  import('@anthropic-ai/sdk/resources/messages/messages').MessageParam;
+++type ContentBlockParamType =
+++  import('@anthropic-ai/sdk/resources/messages/messages').ContentBlockParam;
+++type ToolType =
+++  import('@anthropic-ai/sdk/resources/messages/messages').Tool;
+++type MessageType =
+++  import('@anthropic-ai/sdk/resources/messages/messages').Message;
+++type MessageStreamEventType =
+++  import('@anthropic-ai/sdk/resources/messages/messages').MessageStreamEvent;
+++
+++/**
+++ * Maps Gemini model names used in auxiliary calls to Claude equivalents.
+++ */
+++function mapGeminiModelToClaude(
+++  geminiModel: string,
+++  userModel: string,
+++): string {
+++  if (geminiModel.startsWith('claude-')) {
+++    return geminiModel;
+++  }
+++  if (
+++    geminiModel.includes('flash-lite') ||
+++    geminiModel.includes('flash') ||
+++    geminiModel === 'gemini-2.5-flash' ||
+++    geminiModel === 'gemini-2.5-flash-lite'
+++  ) {
+++    return CLAUDE_HAIKU_MODEL;
+++  }
+++  if (geminiModel.includes('pro')) {
+++    return userModel;
+++  }
+++  // Default: use the user's selected model
+++  return userModel;
+++}
+++
+++/**
+++ * Translates Gemini Content[] to Anthropic MessageParam[].
+++ * Handles role mapping, message alternation merging, and part conversion.
+++ */
+++function translateContentsToMessages(
+++  contents: Content[],
+++): { messages: MessageParamType[]; system: string | undefined } {
+++  let systemText: string | undefined;
+++  const messages: MessageParamType[] = [];
+++
+++  for (const content of contents) {
+++    const role =
+++      content.role === 'model'
+++        ? ('assistant' as const)
+++        : ('user' as const);
+++
+++    const blocks = translateParts(content.parts || []);
+++    if (blocks.length === 0) continue;
+++
+++    // Merge consecutive same-role messages (Anthropic requires strict alternation)
+++    const lastMsg = messages[messages.length - 1];
+++    if (lastMsg && lastMsg.role === role) {
+++      if (Array.isArray(lastMsg.content)) {
+++        (lastMsg.content).push(
+++          ...(blocks),
+++        );
+++      } else {
+++        lastMsg.content = [
+++          { type: 'text', text: lastMsg.content },
+++          ...(blocks),
+++        ];
+++      }
+++    } else {
+++      messages.push({
+++        role,
+++        content: blocks,
+++      });
+++    }
+++  }
+++
+++  // Ensure conversation starts with a user message
+++  if (messages.length > 0 && messages[0].role === 'assistant') {
+++    messages.unshift({
+++      role: 'user',
+++      content: [{ type: 'text', text: '(conversation start)' }],
+++    });
+++  }
+++
+++  return { messages, system: systemText };
+++}
+++
+++/**
+++ * Translates Gemini Part[] to Anthropic content blocks.
+++ */
+++function translateParts(parts: Part[]): ContentBlockParamType[] {
+++  const blocks: ContentBlockParamType[] = [];
+++
+++  for (const part of parts) {
+++    // Skip thought parts - Claude generates its own thinking
+++    if (part.thought) continue;
+++
+++    // Strip thoughtSignature - Gemini-specific
+++    // (no action needed, just don't include it)
+++
+++    if (part.text !== undefined && part.text !== null) {
+++      blocks.push({ type: 'text', text: part.text });
+++    } else if (part.functionCall) {
+++      blocks.push({
+++        type: 'tool_use',
+++        id: part.functionCall.id || `call_${crypto.randomUUID()}`,
+++        name: part.functionCall.name || 'unknown',
+++        input: part.functionCall.args || {},
+++      } as ContentBlockParamType);
+++    } else if (part.functionResponse) {
+++      // Stringify response only if it's not already a string
+++      const responseData = part.functionResponse.response;
+++      const contentStr =
+++        typeof responseData === 'string'
+++          ? responseData
+++          : JSON.stringify(responseData || {});
+++      blocks.push({
+++        type: 'tool_result',
+++        tool_use_id: part.functionResponse.id || '',
+++        content: contentStr,
+++      } as ContentBlockParamType);
+++    } else if (part.inlineData) {
+++      const mediaType = part.inlineData.mimeType || 'image/png';
+++      // Only pass images to Claude - skip other media types
+++      if (mediaType.startsWith('image/')) {
+++        blocks.push({
+++          type: 'image',
+++          source: {
+++            type: 'base64',
+++            // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+++            media_type: mediaType as
+++              | 'image/jpeg'
+++              | 'image/png'
+++              | 'image/gif'
+++              | 'image/webp',
+++            data: part.inlineData.data || '',
+++          },
+++        } as ContentBlockParamType);
+++      } else {
+++        debugLogger.warn(
+++          `[ClaudeContentGenerator] Unsupported inline data type: ${mediaType}, skipping`,
+++        );
+++      }
+++    } else if (part.fileData) {
+++      debugLogger.warn(
+++        '[ClaudeContentGenerator] fileData parts are not supported by Claude, skipping',
+++      );
+++    }
+++  }
+++
+++  return blocks;
+++}
+++
+++/**
+++ * Translates Gemini Tool[] to Anthropic Tool[].
+++ */
+++function translateTools(
+++  geminiTools: unknown[] | undefined,
+++): ToolType[] {
+++  if (!geminiTools || !Array.isArray(geminiTools)) return [];
+++
+++  const claudeTools: ToolType[] = [];
+++
+++  for (const tool of geminiTools) {
+++    if (!tool || typeof tool !== 'object') continue;
+++
+++    // Skip Gemini-specific tools
+++    if ('googleSearch' in tool || 'urlContext' in tool) {
+++      debugLogger.warn(
+++        '[ClaudeContentGenerator] googleSearch/urlContext tools not available for Claude, skipping',
+++      );
+++      continue;
+++    }
+++
+++    if ('functionDeclarations' in tool && (tool as Record<string, unknown>)['functionDeclarations']) {
+++      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+++      const declarations = (tool as Record<string, unknown>)['functionDeclarations'] as Array<{
+++        name?: string;
+++        description?: string;
+++        parameters?: Record<string, unknown>;
+++      }>;
+++      for (const func of declarations) {
+++        claudeTools.push({
+++          name: func.name || 'unknown',
+++          description: func.description || '',
+++          // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+++          input_schema: (func.parameters || {
+++            type: 'object',
+++            properties: {},
+++          }) as ToolType['input_schema'],
+++        });
+++      }
+++    }
+++  }
+++
+++  return claudeTools;
+++}
+++
+++/**
+++ * Extracts system instruction text from Gemini config.
+++ */
+++function extractSystemInstruction(
+++  config: GenerateContentParameters['config'],
+++): string | undefined {
+++  if (!config?.systemInstruction) return undefined;
+++
+++  const sysInstr = config.systemInstruction;
+++  if (typeof sysInstr === 'string') return sysInstr;
+++
+++  // Content object with parts
+++  if (typeof sysInstr === 'object' && 'parts' in sysInstr) {
+++    const content = sysInstr;
+++    return (content.parts || [])
+++      .filter((p: Part) => p.text)
+++      .map((p: Part) => p.text)
+++      .join('\n');
+++  }
+++
+++  // Part or Part[]
+++  if (Array.isArray(sysInstr)) {
+++    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+++    return (sysInstr as Part[])
+++      .filter((p: Part) => p.text)
+++      .map((p: Part) => p.text)
+++      .join('\n');
+++  }
+++
+++  if (typeof sysInstr === 'object' && 'text' in sysInstr) {
+++    return (sysInstr).text || undefined;
+++  }
+++
+++  return undefined;
+++}
+++
+++/**
+++ * Translates Anthropic stop_reason to Gemini FinishReason.
+++ */
+++function translateStopReason(
+++  stopReason: string | null | undefined,
+++): FinishReason {
+++  switch (stopReason) {
+++    case 'end_turn':
+++    case 'tool_use':
+++      return FinishReason.STOP;
+++    case 'max_tokens':
+++      return FinishReason.MAX_TOKENS;
+++    default:
+++      return FinishReason.STOP;
+++  }
+++}
+++
+++/**
+++ * Translates an Anthropic Message response to a Gemini GenerateContentResponse.
+++ */
+++function translateResponseToGemini(message: MessageType): GenerateContentResponse {
+++  const parts: Part[] = [];
+++
+++  for (const block of message.content) {
+++    if (block.type === 'text') {
+++      parts.push({ text: block.text });
+++    } else if (block.type === 'tool_use') {
+++      parts.push({
+++        functionCall: {
+++          id: block.id,
+++          name: block.name,
+++          // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+++          args: block.input as Record<string, unknown>,
+++        },
+++      });
+++    } else if (block.type === 'thinking') {
+++      parts.push({
+++        // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+++        text: (block as unknown as Record<string, string>)['thinking'],
+++        thought: true,
+++      });
+++    }
+++  }
+++
+++  const candidate: Candidate = {
+++    content: { role: 'model', parts },
+++    finishReason: translateStopReason(message.stop_reason),
+++  };
+++
+++  const usageMetadata: GenerateContentResponseUsageMetadata = {
+++    promptTokenCount: message.usage?.input_tokens,
+++    candidatesTokenCount: message.usage?.output_tokens,
+++    totalTokenCount:
+++      (message.usage?.input_tokens || 0) +
+++      (message.usage?.output_tokens || 0),
+++  };
+++
+++  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+++  return {
+++    candidates: [candidate],
+++    usageMetadata,
+++  } as unknown as GenerateContentResponse;
+++}
+++
+++/**
+++ * ContentGenerator adapter that translates Gemini-typed requests to
+++ * Anthropic Messages API format, calls Claude via @anthropic-ai/vertex-sdk,
+++ * and translates responses back to Gemini types.
+++ */
+++export class ClaudeContentGenerator implements ContentGenerator {
+++  private client: AnthropicVertexType | null = null;
+++  private readonly projectId: string;
+++  private readonly region: string;
+++  private readonly userModel: string;
+++
+++  constructor(projectId: string, region: string, userModel?: string) {
+++    this.projectId = projectId;
+++    this.region = region;
+++    this.userModel = userModel || CLAUDE_SONNET_MODEL;
+++  }
+++
+++  private async getClient(): Promise<AnthropicVertexType> {
+++    if (!this.client) {
+++      const { AnthropicVertex } = await import('@anthropic-ai/vertex-sdk');
+++      this.client = new AnthropicVertex({
+++        projectId: this.projectId,
+++        region: this.region,
+++      });
+++    }
+++    return this.client;
+++  }
+++
+++  /**
+++   * Build the Anthropic API request parameters from a Gemini request.
+++   */
+++  private buildRequest(
+++    req: GenerateContentParameters,
+++  ): MessageCreateParamsBase {
+++    const model = mapGeminiModelToClaude(req.model, this.userModel);
+++    const contents = Array.isArray(req.contents)
+++      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+++      ? (req.contents as Content[])
+++      : [];
+++    const { messages } = translateContentsToMessages(contents);
+++
+++    let systemText = extractSystemInstruction(req.config);
+++    const tools = translateTools(req.config?.tools);
+++
+++    // Handle JSON mode: Claude doesn't support responseMimeType, so we add
+++    // explicit JSON instructions to the system prompt
+++    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+++    const responseMimeType = (
+++      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+++      req.config as Record<string, unknown> | undefined
+++    )?.['responseMimeType'] as string | undefined;
+++    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+++    const responseJsonSchema = (
+++      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+++      req.config as Record<string, unknown> | undefined
+++    )?.['responseJsonSchema'] as Record<string, unknown> | undefined;
+++
+++    if (responseMimeType === 'application/json') {
+++      const jsonInstruction = responseJsonSchema
+++        ? `\n\nYou MUST respond with valid JSON only, no other text. Your response must conform to this JSON schema:\n${JSON.stringify(responseJsonSchema, null, 2)}`
+++        : '\n\nYou MUST respond with valid JSON only, no other text.';
+++      systemText = (systemText || '') + jsonInstruction;
+++    }
+++
+++    const maxTokens = req.config?.maxOutputTokens || 8192;
+++    const temperature = req.config?.temperature;
+++    const topP = req.config?.topP;
+++    const topK = req.config?.topK;
+++
+++    const params: MessageCreateParamsType = {
+++      model,
+++      messages,
+++      max_tokens: maxTokens,
+++    };
+++
+++    if (systemText) {
+++      params.system = systemText;
+++    }
+++    if (tools.length > 0) {
+++      params.tools = tools;
+++    }
+++    if (temperature !== undefined && temperature !== null) {
+++      params.temperature = temperature;
+++    }
+++    if (topP !== undefined && topP !== null) {
+++      params.top_p = topP;
+++    }
+++    if (topK !== undefined && topK !== null) {
+++      params.top_k = topK;
+++    }
+++
+++    // Map thinking config
+++    // thinkingBudget: 0 means "no thinking" in Gemini - skip for Claude
+++    // thinkingBudget > 0 or thinkingLevel/includeThoughts enables thinking
+++    const thinkingConfig = req.config?.thinkingConfig;
+++    if (thinkingConfig) {
+++      const budget = thinkingConfig.thinkingBudget;
+++      const hasThinking =
+++        (budget !== undefined && budget !== null && budget > 0) ||
+++        thinkingConfig.includeThoughts ||
+++        thinkingConfig.thinkingLevel;
+++
+++      if (hasThinking) {
+++        const budgetTokens =
+++          budget && budget > 0 ? budget : 4096;
+++        // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+++        (params as unknown as Record<string, unknown>)['thinking'] = {
+++          type: 'enabled',
+++          budget_tokens: budgetTokens,
+++        };
+++      }
+++    }
+++
+++    return params;
+++  }
+++
+++  async generateContent(
+++    request: GenerateContentParameters,
+++    _userPromptId: string,
+++    _role: LlmRole,
+++  ): Promise<GenerateContentResponse> {
+++    const client = await this.getClient();
+++    const baseParams = this.buildRequest(request);
+++    const params = { ...baseParams, stream: false as const } as MessageCreateParamsType;
+++
+++    // Pass abort signal to the Anthropic SDK via request options
+++    const abortSignal = request.config?.abortSignal;
+++    const requestOptions = abortSignal ? { signal: abortSignal } : undefined;
+++
+++    const message = await client.messages.create(params, requestOptions);
+++
+++    return translateResponseToGemini(message as MessageType);
+++  }
+++
+++  async generateContentStream(
+++    request: GenerateContentParameters,
+++    _userPromptId: string,
+++    _role: LlmRole,
+++  ): Promise<AsyncGenerator<GenerateContentResponse>> {
+++    const client = await this.getClient();
+++    const params = this.buildRequest(request);
+++
+++    // Pass abort signal to the Anthropic SDK via request options
+++    const abortSignal = request.config?.abortSignal;
+++    const requestOptions = abortSignal ? { signal: abortSignal } : undefined;
+++
+++    // Use the streaming API
+++    const stream = client.messages.stream(params, requestOptions);
+++
+++    return this.processStream(stream);
+++  }
+++
+++  private async *processStream(
+++    stream: ReturnType<AnthropicVertexType['messages']['stream']>,
+++  ): AsyncGenerator<GenerateContentResponse> {
+++    // Buffer for accumulating tool_use input JSON deltas
+++    const toolUseBuffers = new Map<
+++      number,
+++      { id: string; name: string; inputJson: string }
+++    >();
+++
+++    let currentBlockIndex = -1;
+++    let inputTokens = 0;
+++    let outputTokens = 0;
+++
+++    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+++    for await (const event of stream as AsyncIterable<MessageStreamEventType>) {
+++      switch (event.type) {
+++        case 'message_start': {
+++          if (event.message?.usage) {
+++            inputTokens = event.message.usage.input_tokens || 0;
+++          }
+++          break;
+++        }
+++
+++        case 'content_block_start': {
+++          currentBlockIndex = event.index;
+++          const block = event.content_block;
+++
+++          if (block.type === 'tool_use') {
+++            // Start buffering tool use
+++            toolUseBuffers.set(currentBlockIndex, {
+++              id: block.id,
+++              name: block.name,
+++              inputJson: '',
+++            });
+++          }
+++          // Note: thinking blocks are handled via thinking_delta events,
+++          // not at content_block_start (which has no initial text).
+++          break;
+++        }
+++
+++        case 'content_block_delta': {
+++          const delta = event.delta;
+++          if (delta.type === 'text_delta') {
+++            // Emit text deltas immediately
+++            yield this.makeChunk([{ text: delta.text }]);
+++          } else if (delta.type === 'input_json_delta') {
+++            // Buffer tool use input JSON
+++            const buffer = toolUseBuffers.get(event.index);
+++            if (buffer) {
+++              buffer.inputJson += delta.partial_json;
+++            }
+++          } else if (delta.type === 'thinking_delta') {
+++            // Emit thinking deltas
+++            yield this.makeChunk([
+++              // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+++              { text: (delta as unknown as Record<string, string>)['thinking'], thought: true },
+++            ]);
+++          }
+++          break;
+++        }
+++
+++        case 'content_block_stop': {
+++          // If this was a tool_use block, emit the complete function call
+++          const buffer = toolUseBuffers.get(event.index);
+++          if (buffer) {
+++            let parsedInput: Record<string, unknown> = {};
+++            try {
+++              if (buffer.inputJson) {
+++                // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+++                parsedInput = JSON.parse(buffer.inputJson) as Record<
+++                  string,
+++                  unknown
+++                >;
+++              }
+++            } catch {
+++              debugLogger.warn(
+++                `[ClaudeContentGenerator] Failed to parse tool_use input JSON: ${buffer.inputJson}`,
+++              );
+++            }
+++
+++            yield this.makeChunk([
+++              {
+++                functionCall: {
+++                  id: buffer.id,
+++                  name: buffer.name,
+++                  args: parsedInput,
+++                },
+++              },
+++            ]);
+++            toolUseBuffers.delete(event.index);
+++          }
+++          break;
+++        }
+++
+++        case 'message_delta': {
+++          if (event.usage) {
+++            outputTokens = event.usage.output_tokens || 0;
+++          }
+++
+++          // Emit final chunk with finish reason and usage
+++          const stopReason = event.delta?.stop_reason;
+++          // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+++          yield {
+++            candidates: [
+++              {
+++                content: { role: 'model', parts: [] },
+++                finishReason: translateStopReason(stopReason),
+++              },
+++            ],
+++            usageMetadata: {
+++              promptTokenCount: inputTokens,
+++              candidatesTokenCount: outputTokens,
+++              totalTokenCount: inputTokens + outputTokens,
+++            },
+++          } as unknown as GenerateContentResponse;
+++          break;
+++        }
+++
+++        case 'message_stop': {
+++          // Stream complete
+++          break;
+++        }
+++
+++        default:
+++          break;
+++      }
+++    }
+++  }
+++
+++  private makeChunk(parts: Part[]): GenerateContentResponse {
+++    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+++    return {
+++      candidates: [
+++        {
+++          content: { role: 'model', parts },
+++        },
+++      ],
+++    } as unknown as GenerateContentResponse;
+++  }
+++
+++  async countTokens(
+++    request: CountTokensParameters,
+++  ): Promise<CountTokensResponse> {
+++    // Claude has no countTokens API on Vertex.
+++    // Use character-based estimation as fallback.
+++    const contents = Array.isArray(request.contents)
+++      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+++      ? (request.contents as Content[])
+++      : [];
+++    const allParts = contents.flatMap((c) => c.parts || []);
+++    const tokenCount = estimateTokenCountSync(allParts);
+++    return {
+++      totalTokens: tokenCount,
+++    } as CountTokensResponse;
+++  }
+++
+++  async embedContent(
+++    _request: EmbedContentParameters,
+++  ): Promise<EmbedContentResponse> {
+++    throw new Error(
+++      'Embedding is not supported with Claude models. ' +
+++        'Memory features requiring embeddings are not available when using Claude.',
+++    );
+++  }
+++}
++diff --git a/packages/core/src/core/contentGenerator.test.ts b/packages/core/src/core/contentGenerator.test.ts
++index d86eb6f73..49d1fa538 100644
++--- a/packages/core/src/core/contentGenerator.test.ts
+++++ b/packages/core/src/core/contentGenerator.test.ts
++@@ -27,6 +27,9 @@ vi.mock('./apiKeyCredentialStorage.js', () => ({
++ }));
++ 
++ vi.mock('./fakeContentGenerator.js');
+++vi.mock('./claudeContentGenerator.js', () => ({
+++  ClaudeContentGenerator: vi.fn(),
+++}));
++ 
++ const mockConfig = {
++   getModel: vi.fn().mockReturnValue('gemini-pro'),
++@@ -560,3 +563,95 @@ describe('createContentGeneratorConfig', () => {
++     expect(config.vertexai).toBeUndefined();
++   });
++ });
+++
+++describe('createContentGenerator with Claude models', () => {
+++  beforeEach(() => {
+++    resetVersionCache();
+++    vi.clearAllMocks();
+++  });
+++
+++  afterEach(() => {
+++    vi.unstubAllEnvs();
+++  });
+++
+++  it('should create ClaudeContentGenerator for Claude model with Vertex AI auth', async () => {
+++    vi.stubEnv('GOOGLE_CLOUD_PROJECT', 'test-project');
+++    vi.stubEnv('GOOGLE_CLOUD_LOCATION', 'us-east5');
+++
+++    const claudeConfig = {
+++      getModel: vi.fn().mockReturnValue('claude-sonnet-4-6'),
+++      getProxy: vi.fn().mockReturnValue(undefined),
+++      getUsageStatisticsEnabled: vi.fn().mockReturnValue(false),
+++    } as unknown as Config;
+++
+++    const generator = await createContentGenerator(
+++      {
+++        authType: AuthType.USE_VERTEX_AI,
+++        vertexai: true,
+++      },
+++      claudeConfig,
+++    );
+++
+++    expect(generator).toBeInstanceOf(LoggingContentGenerator);
+++  });
+++
+++  it('should throw error when using Claude with USE_GEMINI auth', async () => {
+++    const claudeConfig = {
+++      getModel: vi.fn().mockReturnValue('claude-sonnet-4-6'),
+++      getProxy: vi.fn().mockReturnValue(undefined),
+++      getUsageStatisticsEnabled: vi.fn().mockReturnValue(false),
+++    } as unknown as Config;
+++
+++    await expect(
+++      createContentGenerator(
+++        {
+++          apiKey: 'test-key',
+++          authType: AuthType.USE_GEMINI,
+++        },
+++        claudeConfig,
+++      ),
+++    ).rejects.toThrow('Vertex AI authentication');
+++  });
+++
+++  it('should throw error when GOOGLE_CLOUD_PROJECT is missing for Claude', async () => {
+++    vi.stubEnv('GOOGLE_CLOUD_LOCATION', 'us-east5');
+++    vi.stubEnv('GOOGLE_CLOUD_PROJECT', '');
+++
+++    const claudeConfig = {
+++      getModel: vi.fn().mockReturnValue('claude-opus-4-6'),
+++      getProxy: vi.fn().mockReturnValue(undefined),
+++      getUsageStatisticsEnabled: vi.fn().mockReturnValue(false),
+++    } as unknown as Config;
+++
+++    await expect(
+++      createContentGenerator(
+++        {
+++          authType: AuthType.USE_VERTEX_AI,
+++          vertexai: true,
+++        },
+++        claudeConfig,
+++      ),
+++    ).rejects.toThrow('GOOGLE_CLOUD_PROJECT');
+++  });
+++
+++  it('should throw error when GOOGLE_CLOUD_LOCATION is missing for Claude', async () => {
+++    vi.stubEnv('GOOGLE_CLOUD_PROJECT', 'test-project');
+++    vi.stubEnv('GOOGLE_CLOUD_LOCATION', '');
+++
+++    const claudeConfig = {
+++      getModel: vi.fn().mockReturnValue('claude-haiku-4-5@20251001'),
+++      getProxy: vi.fn().mockReturnValue(undefined),
+++      getUsageStatisticsEnabled: vi.fn().mockReturnValue(false),
+++    } as unknown as Config;
+++
+++    await expect(
+++      createContentGenerator(
+++        {
+++          authType: AuthType.USE_VERTEX_AI,
+++          vertexai: true,
+++        },
+++        claudeConfig,
+++      ),
+++    ).rejects.toThrow('GOOGLE_CLOUD_LOCATION');
+++  });
+++});
++diff --git a/packages/core/src/core/contentGenerator.ts b/packages/core/src/core/contentGenerator.ts
++index 4270305ca..5939eda48 100644
++--- a/packages/core/src/core/contentGenerator.ts
+++++ b/packages/core/src/core/contentGenerator.ts
++@@ -23,8 +23,9 @@ import { InstallationManager } from '../utils/installationManager.js';
++ import { FakeContentGenerator } from './fakeContentGenerator.js';
++ import { parseCustomHeaders } from '../utils/customHeaderUtils.js';
++ import { RecordingContentGenerator } from './recordingContentGenerator.js';
++-import { getVersion, resolveModel } from '../../index.js';
+++import { getVersion, resolveModel, isClaudeModel } from '../../index.js';
++ import type { LlmRole } from '../telemetry/llmRole.js';
+++import { ClaudeContentGenerator } from './claudeContentGenerator.js';
++ 
++ /**
++  * Interface abstracting the core functionalities for generating content and counting tokens.
++@@ -205,6 +206,34 @@ export async function createContentGenerator(
++       config.authType === AuthType.USE_GEMINI ||
++       config.authType === AuthType.USE_VERTEX_AI
++     ) {
+++      // Route Claude models through the ClaudeContentGenerator adapter
+++      if (isClaudeModel(model)) {
+++        if (config.authType !== AuthType.USE_VERTEX_AI) {
+++          throw new Error(
+++            `Claude models require Vertex AI authentication. ` +
+++              `Set GOOGLE_GENAI_USE_VERTEXAI=true, GOOGLE_CLOUD_PROJECT, and GOOGLE_CLOUD_LOCATION.`,
+++          );
+++        }
+++        const projectId =
+++          process.env['GOOGLE_CLOUD_PROJECT'] ||
+++          process.env['GOOGLE_CLOUD_PROJECT_ID'] ||
+++          '';
+++        if (!projectId) {
+++          throw new Error(
+++            `GOOGLE_CLOUD_PROJECT must be set to use Claude models on Vertex AI.`,
+++          );
+++        }
+++        const region = process.env['GOOGLE_CLOUD_LOCATION'] || '';
+++        if (!region) {
+++          throw new Error(
+++            `GOOGLE_CLOUD_LOCATION must be set to use Claude models on Vertex AI ` +
+++              `(e.g., global, us-east5, us-central1, europe-west1).`,
+++          );
+++        }
+++        const claude = new ClaudeContentGenerator(projectId, region, model);
+++        return new LoggingContentGenerator(claude, gcConfig);
+++      }
+++
++       let headers: Record<string, string> = { ...baseHeaders };
++       if (gcConfig?.getUsageStatisticsEnabled()) {
++         const installationManager = new InstallationManager();
++diff --git a/packages/core/src/core/geminiChat.ts b/packages/core/src/core/geminiChat.ts
++index 87d0c235f..8daed983a 100644
++--- a/packages/core/src/core/geminiChat.ts
+++++ b/packages/core/src/core/geminiChat.ts
++@@ -25,6 +25,7 @@ import type { Config } from '../config/config.js';
++ import {
++   resolveModel,
++   isGemini2Model,
+++  isClaudeModel,
++   supportsModernFeatures,
++ } from '../config/models.js';
++ import { hasCycleInSchema } from '../tools/tools.js';
++@@ -738,7 +739,11 @@ export class GeminiChat {
++   // To ensure our requests validate, the first function call in every model
++   // turn within the active loop must have a `thoughtSignature` property.
++   // If we do not do this, we will get back 400 errors from the API.
+++  // Claude models don't use thoughtSignatures, so skip this entirely.
++   ensureActiveLoopHasThoughtSignatures(requestContents: Content[]): Content[] {
+++    if (isClaudeModel(this.config.getModel())) {
+++      return requestContents;
+++    }
++     // First, find the start of the active loop by finding the last user turn
++     // with a text message, i.e. that is not a function response.
++     let activeLoopStartIndex = -1;
++diff --git a/packages/core/src/core/tokenLimits.ts b/packages/core/src/core/tokenLimits.ts
++index 39a3443e3..f38c52c55 100644
++--- a/packages/core/src/core/tokenLimits.ts
+++++ b/packages/core/src/core/tokenLimits.ts
++@@ -10,6 +10,7 @@ import {
++   DEFAULT_GEMINI_MODEL,
++   PREVIEW_GEMINI_FLASH_MODEL,
++   PREVIEW_GEMINI_MODEL,
+++  isClaudeModel,
++ } from '../config/models.js';
++ 
++ type Model = string;
++@@ -20,6 +21,9 @@ export const DEFAULT_TOKEN_LIMIT = 1_048_576;
++ export function tokenLimit(model: Model): TokenCount {
++   // Add other models as they become relevant or if specified by config
++   // Pulled from https://ai.google.dev/gemini-api/docs/models
+++  if (model && isClaudeModel(model)) {
+++    return 200_000;
+++  }
++   switch (model) {
++     case PREVIEW_GEMINI_MODEL:
++     case PREVIEW_GEMINI_FLASH_MODEL:
++diff --git a/packages/core/src/prompts/promptProvider.test.ts b/packages/core/src/prompts/promptProvider.test.ts
++index b74f159e4..2301d80c8 100644
++--- a/packages/core/src/prompts/promptProvider.test.ts
+++++ b/packages/core/src/prompts/promptProvider.test.ts
++@@ -51,6 +51,7 @@ describe('PromptProvider', () => {
++         getSkills: vi.fn().mockReturnValue([]),
++       }),
++       getActiveModel: vi.fn().mockReturnValue(PREVIEW_GEMINI_MODEL),
+++      getModel: vi.fn().mockReturnValue(PREVIEW_GEMINI_MODEL),
++       getAgentRegistry: vi.fn().mockReturnValue({
++         getAllDefinitions: vi.fn().mockReturnValue([]),
++       }),
++@@ -176,4 +177,29 @@ describe('PromptProvider', () => {
++       expect(prompt).toContain('/tmp/project-temp/plans/');
++     });
++   });
+++
+++  it('should include "powered by Claude" when model is Claude', () => {
+++    vi.mocked(getAllGeminiMdFilenames).mockReturnValue([
+++      DEFAULT_CONTEXT_FILENAME,
+++    ]);
+++    (mockConfig.getModel as ReturnType<typeof vi.fn>).mockReturnValue(
+++      'claude-sonnet-4-6',
+++    );
+++
+++    const provider = new PromptProvider();
+++    const prompt = provider.getCoreSystemPrompt(mockConfig);
+++
+++    expect(prompt).toContain('powered by Claude');
+++  });
+++
+++  it('should NOT include "powered by Claude" for Gemini models', () => {
+++    vi.mocked(getAllGeminiMdFilenames).mockReturnValue([
+++      DEFAULT_CONTEXT_FILENAME,
+++    ]);
+++
+++    const provider = new PromptProvider();
+++    const prompt = provider.getCoreSystemPrompt(mockConfig);
+++
+++    expect(prompt).not.toContain('powered by Claude');
+++  });
++ });
++diff --git a/packages/core/src/prompts/promptProvider.ts b/packages/core/src/prompts/promptProvider.ts
++index 9b8759c2a..8a481c0fd 100644
++--- a/packages/core/src/prompts/promptProvider.ts
+++++ b/packages/core/src/prompts/promptProvider.ts
++@@ -116,6 +116,7 @@ export class PromptProvider {
++       const options: snippets.SystemPromptOptions = {
++         preamble: this.withSection('preamble', () => ({
++           interactive: interactiveMode,
+++          modelName: config.getModel(),
++         })),
++         coreMandates: this.withSection('coreMandates', () => ({
++           interactive: interactiveMode,
++diff --git a/packages/core/src/prompts/snippets.ts b/packages/core/src/prompts/snippets.ts
++index bebd3c914..220ccb97f 100644
++--- a/packages/core/src/prompts/snippets.ts
+++++ b/packages/core/src/prompts/snippets.ts
++@@ -49,6 +49,7 @@ export interface SystemPromptOptions {
++ 
++ export interface PreambleOptions {
++   interactive: boolean;
+++  modelName?: string;
++ }
++ 
++ export interface CoreMandatesOptions {
++@@ -149,9 +150,14 @@ ${renderUserMemory(userMemory, contextFilenames)}
++ 
++ export function renderPreamble(options?: PreambleOptions): string {
++   if (!options) return '';
+++  const isClaudeBackend =
+++    options.modelName && options.modelName.startsWith('claude-');
+++  const agentName = isClaudeBackend
+++    ? 'Gemini CLI (powered by Claude)'
+++    : 'Gemini CLI';
++   return options.interactive
++-    ? 'You are Gemini CLI, an interactive CLI agent specializing in software engineering tasks. Your primary goal is to help users safely and effectively.'
++-    : 'You are Gemini CLI, an autonomous CLI agent specializing in software engineering tasks. Your primary goal is to help users safely and effectively.';
+++    ? `You are ${agentName}, an interactive CLI agent specializing in software engineering tasks. Your primary goal is to help users safely and effectively.`
+++    : `You are ${agentName}, an autonomous CLI agent specializing in software engineering tasks. Your primary goal is to help users safely and effectively.`;
++ }
++ 
++ export function renderCoreMandates(options?: CoreMandatesOptions): string {
++diff --git a/packages/core/src/services/test-data/resolved-aliases-retry.golden.json b/packages/core/src/services/test-data/resolved-aliases-retry.golden.json
++index bb6dabdd6..8b6ad9ff4 100644
++--- a/packages/core/src/services/test-data/resolved-aliases-retry.golden.json
+++++ b/packages/core/src/services/test-data/resolved-aliases-retry.golden.json
++@@ -97,6 +97,27 @@
++       "topK": 64
++     }
++   },
+++  "claude-opus-4-6": {
+++    "model": "claude-opus-4-6",
+++    "generateContentConfig": {
+++      "temperature": 1,
+++      "topP": 1
+++    }
+++  },
+++  "claude-sonnet-4-6": {
+++    "model": "claude-sonnet-4-6",
+++    "generateContentConfig": {
+++      "temperature": 1,
+++      "topP": 1
+++    }
+++  },
+++  "claude-haiku-4-5@20251001": {
+++    "model": "claude-haiku-4-5@20251001",
+++    "generateContentConfig": {
+++      "temperature": 1,
+++      "topP": 1
+++    }
+++  },
++   "gemini-2.5-flash-base": {
++     "model": "gemini-2.5-flash",
++     "generateContentConfig": {
++@@ -253,4 +274,4 @@
++     "model": "gemini-3-pro-preview",
++     "generateContentConfig": {}
++   }
++-}
+++}
++\ No newline at end of file
++diff --git a/packages/core/src/services/test-data/resolved-aliases.golden.json b/packages/core/src/services/test-data/resolved-aliases.golden.json
++index bb6dabdd6..8b6ad9ff4 100644
++--- a/packages/core/src/services/test-data/resolved-aliases.golden.json
+++++ b/packages/core/src/services/test-data/resolved-aliases.golden.json
++@@ -97,6 +97,27 @@
++       "topK": 64
++     }
++   },
+++  "claude-opus-4-6": {
+++    "model": "claude-opus-4-6",
+++    "generateContentConfig": {
+++      "temperature": 1,
+++      "topP": 1
+++    }
+++  },
+++  "claude-sonnet-4-6": {
+++    "model": "claude-sonnet-4-6",
+++    "generateContentConfig": {
+++      "temperature": 1,
+++      "topP": 1
+++    }
+++  },
+++  "claude-haiku-4-5@20251001": {
+++    "model": "claude-haiku-4-5@20251001",
+++    "generateContentConfig": {
+++      "temperature": 1,
+++      "topP": 1
+++    }
+++  },
++   "gemini-2.5-flash-base": {
++     "model": "gemini-2.5-flash",
++     "generateContentConfig": {
++@@ -253,4 +274,4 @@
++     "model": "gemini-3-pro-preview",
++     "generateContentConfig": {}
++   }
++-}
+++}
++\ No newline at end of file
++diff --git a/packages/core/src/tools/web-fetch.test.ts b/packages/core/src/tools/web-fetch.test.ts
++index 92ba4076b..829eaa6b0 100644
++--- a/packages/core/src/tools/web-fetch.test.ts
+++++ b/packages/core/src/tools/web-fetch.test.ts
++@@ -246,6 +246,7 @@ describe('WebFetchTool', () => {
++       getApprovalMode: vi.fn(),
++       setApprovalMode: vi.fn(),
++       getProxy: vi.fn(),
+++      getModel: vi.fn().mockReturnValue('gemini-2.5-flash'),
++       getGeminiClient: mockGetGeminiClient,
++       getRetryFetchErrors: vi.fn().mockReturnValue(false),
++       getDirectWebFetch: vi.fn().mockReturnValue(false),
++@@ -934,4 +935,59 @@ describe('WebFetchTool', () => {
++       expect(result.error?.type).toBe(ToolErrorType.INVALID_TOOL_PARAMS);
++     });
++   });
+++
+++  describe('execute with Claude model', () => {
+++    beforeEach(() => {
+++      vi.spyOn(mockConfig, 'getModel').mockReturnValue('claude-sonnet-4-6');
+++      vi.spyOn(fetchUtils, 'isPrivateIp').mockReturnValue(false);
+++    });
+++
+++    it('should route to fallback when Claude is active with prompt param', async () => {
+++      mockFetch('https://example.com/', {
+++        headers: new Headers({ 'content-type': 'text/html' }),
+++        text: () => Promise.resolve('<html><body>Hello Claude</body></html>'),
+++      });
+++
+++      mockGenerateContent.mockResolvedValue({
+++        candidates: [
+++          {
+++            content: {
+++              parts: [{ text: 'Processed fallback content for Claude' }],
+++              role: 'model',
+++            },
+++          },
+++        ],
+++      });
+++
+++      const tool = new WebFetchTool(mockConfig, bus);
+++      const params = { prompt: 'fetch https://example.com' };
+++      const invocation = tool.build(params);
+++      const result = await invocation.execute(new AbortController().signal);
+++
+++      expect(result.llmContent).toContain('Processed fallback content');
+++      expect(result.returnDisplay).toContain('fallback fetch');
+++    });
+++
+++    it('should route to experimental when Claude is active with url param', async () => {
+++      vi.spyOn(mockConfig, 'getDirectWebFetch').mockReturnValue(false);
+++
+++      mockFetch('https://example.com/', {
+++        status: 200,
+++        headers: new Headers({ 'content-type': 'text/plain' }),
+++        text: () => Promise.resolve('Plain text from experimental path'),
+++      });
+++
+++      const tool = new WebFetchTool(mockConfig, bus);
+++      // Bypass build() validation (which requires prompt when directWebFetch is false)
+++      // to test the Claude url param path in execute()
+++      const invocation = tool['createInvocation'](
+++        { url: 'https://example.com' },
+++        bus,
+++      );
+++      const result = await invocation.execute(new AbortController().signal);
+++
+++      expect(result.llmContent).toBe('Plain text from experimental path');
+++      expect(result.returnDisplay).toContain('Fetched text/plain content');
+++    });
+++  });
++ });
++diff --git a/packages/core/src/tools/web-fetch.ts b/packages/core/src/tools/web-fetch.ts
++index 317022718..cd756daba 100644
++--- a/packages/core/src/tools/web-fetch.ts
+++++ b/packages/core/src/tools/web-fetch.ts
++@@ -33,6 +33,7 @@ import { retryWithBackoff } from '../utils/retry.js';
++ import { WEB_FETCH_DEFINITION } from './definitions/coreTools.js';
++ import { resolveToolDeclaration } from './definitions/resolver.js';
++ import { LRUCache } from 'mnemonist';
+++import { isClaudeModel } from '../config/models.js';
++ 
++ const URL_FETCH_TIMEOUT_MS = 10000;
++ const MAX_CONTENT_LENGTH = 100000;
++@@ -247,14 +248,16 @@ class WebFetchToolInvocation extends BaseToolInvocation<
++       );
++ 
++       const geminiClient = this.config.getGeminiClient();
++-      const fallbackPrompt = `The user requested the following: "${this.params.prompt}".
+++      const fallbackPrompt = `Process the following request using the fetched page content below.
++ 
++-I was unable to access the URL directly. Instead, I have fetched the raw content of the page. Please use the following content to answer the request. Do not attempt to access the URL again.
+++User request: "${this.params.prompt}"
++ 
+++Fetched page content:
++ ---
++ ${textContent}
++ ---
++-`;
+++
+++Analyze the content above and respond to the user's request. Provide a clear, well-structured answer based on the page content.`;
++       const result = await geminiClient.generateContent(
++         { model: 'web-fetch-fallback' },
++         [{ role: 'user', parts: [{ text: fallbackPrompt }] }],
++@@ -509,6 +512,15 @@ Response: ${truncateString(rawResponseText, 10000, '\n\n... [Error response trun
++     if (this.config.getDirectWebFetch()) {
++       return this.executeExperimental(signal);
++     }
+++
+++    // Claude models don't support urlContext - use fallback/experimental path
+++    if (isClaudeModel(this.config.getModel())) {
+++      if (this.params.url) {
+++        return this.executeExperimental(signal);
+++      }
+++      return this.executeFallback(signal);
+++    }
+++
++     const userPrompt = this.params.prompt!;
++     const { validUrls: urls } = parsePrompt(userPrompt);
++     const url = urls[0];
++diff --git a/packages/core/src/tools/web-search.test.ts b/packages/core/src/tools/web-search.test.ts
++index bd07ce0de..96f78aac2 100644
++--- a/packages/core/src/tools/web-search.test.ts
+++++ b/packages/core/src/tools/web-search.test.ts
++@@ -18,10 +18,15 @@ import type { Config } from '../config/config.js';
++ import { GeminiClient } from '../core/client.js';
++ import { ToolErrorType } from './tool-error.js';
++ import { createMockMessageBus } from '../test-utils/mock-message-bus.js';
+++import { fetchWithTimeout } from '../utils/fetch.js';
++ 
++ // Mock GeminiClient and Config constructor
++ vi.mock('../core/client.js');
++ vi.mock('../config/config.js');
+++vi.mock('../utils/fetch.js', () => ({
+++  fetchWithTimeout: vi.fn(),
+++  isPrivateIp: vi.fn().mockReturnValue(false),
+++}));
++ 
++ describe('WebSearchTool', () => {
++   const abortSignal = new AbortController().signal;
++@@ -31,6 +36,7 @@ describe('WebSearchTool', () => {
++   beforeEach(() => {
++     const mockConfigInstance = {
++       getGeminiClient: () => mockGeminiClient,
+++      getModel: () => 'gemini-2.5-flash',
++       getProxy: () => undefined,
++       generationConfigService: {
++         getResolvedConfig: vi.fn().mockImplementation(({ model }) => ({
++@@ -260,5 +266,84 @@ Sources:
++       );
++       expect(result.sources).toHaveLength(3);
++     });
+++
+++    describe('execute with Claude model', () => {
+++      let claudeTool: WebSearchTool;
+++
+++      beforeEach(() => {
+++        const claudeConfigInstance = {
+++          getGeminiClient: () => mockGeminiClient,
+++          getModel: () => 'claude-sonnet-4-6',
+++          getProxy: () => undefined,
+++          generationConfigService: {
+++            getResolvedConfig: vi.fn().mockImplementation(({ model }) => ({
+++              model,
+++              sdkConfig: {},
+++            })),
+++          },
+++        } as unknown as Config;
+++        mockGeminiClient = new GeminiClient(claudeConfigInstance);
+++        claudeTool = new WebSearchTool(
+++          claudeConfigInstance,
+++          createMockMessageBus(),
+++        );
+++      });
+++
+++      afterEach(() => {
+++        vi.unstubAllEnvs();
+++      });
+++
+++      it('should use external search when Claude is active', async () => {
+++        vi.stubEnv('GOOGLE_CSE_API_KEY', 'test-key');
+++        vi.stubEnv('GOOGLE_CSE_CX', 'test-cx');
+++
+++        (fetchWithTimeout as Mock).mockResolvedValue({
+++          ok: true,
+++          json: () =>
+++            Promise.resolve({
+++              items: [
+++                {
+++                  title: 'Test',
+++                  link: 'https://example.com',
+++                  snippet: 'A test snippet',
+++                },
+++              ],
+++            }),
+++        });
+++
+++        (mockGeminiClient.generateContent as Mock).mockResolvedValue({
+++          candidates: [
+++            {
+++              content: {
+++                role: 'model',
+++                parts: [{ text: 'Synthesized response from search results.' }],
+++              },
+++            },
+++          ],
+++        });
+++
+++        const params: WebSearchToolParams = { query: 'claude search test' };
+++        const invocation = claudeTool.build(params);
+++        const result = await invocation.execute(abortSignal);
+++
+++        expect(fetchWithTimeout).toHaveBeenCalledWith(
+++          expect.stringContaining('customsearch'),
+++          expect.any(Number),
+++          expect.any(Object),
+++        );
+++        expect(result.llmContent).toContain('Web search results');
+++      });
+++
+++      it('should return error when CSE credentials missing with Claude', async () => {
+++        const params: WebSearchToolParams = {
+++          query: 'claude missing creds test',
+++        };
+++        const invocation = claudeTool.build(params);
+++        const result = await invocation.execute(abortSignal);
+++
+++        expect(result.llmContent).toContain('GOOGLE_CSE_API_KEY');
+++        expect(result.error?.type).toBe(ToolErrorType.WEB_SEARCH_FAILED);
+++      });
+++    });
++   });
++ });
++diff --git a/packages/core/src/tools/web-search.ts b/packages/core/src/tools/web-search.ts
++index 2756599b2..952188614 100644
++--- a/packages/core/src/tools/web-search.ts
+++++ b/packages/core/src/tools/web-search.ts
++@@ -23,6 +23,8 @@ import { debugLogger } from '../utils/debugLogger.js';
++ import { WEB_SEARCH_DEFINITION } from './definitions/coreTools.js';
++ import { resolveToolDeclaration } from './definitions/resolver.js';
++ import { LlmRole } from '../telemetry/llmRole.js';
+++import { isClaudeModel } from '../config/models.js';
+++import { fetchWithTimeout } from '../utils/fetch.js';
++ 
++ interface GroundingChunkWeb {
++   uri?: string;
++@@ -84,7 +86,112 @@ class WebSearchToolInvocation extends BaseToolInvocation<
++     return `Searching the web for: "${this.params.query}"`;
++   }
++ 
+++  private async executeWithExternalSearch(
+++    signal: AbortSignal,
+++  ): Promise<WebSearchToolResult> {
+++    const apiKey = process.env['GOOGLE_CSE_API_KEY'];
+++    const cseId = process.env['GOOGLE_CSE_CX'];
+++
+++    if (!apiKey || !cseId) {
+++      return {
+++        llmContent:
+++          'Error: Web search with Claude requires GOOGLE_CSE_API_KEY and GOOGLE_CSE_CX environment variables. ' +
+++          'Set up a Google Custom Search Engine at https://programmablesearchengine.google.com/ ' +
+++          'and enable the Custom Search JSON API in your Google Cloud project.',
+++        returnDisplay: 'Error: Missing Google Custom Search API credentials.',
+++        error: {
+++          message:
+++            'Web search with Claude requires GOOGLE_CSE_API_KEY and GOOGLE_CSE_CX environment variables.',
+++          type: ToolErrorType.WEB_SEARCH_FAILED,
+++        },
+++      };
+++    }
+++
+++    try {
+++      const searchUrl = `https://www.googleapis.com/customsearch/v1?key=${encodeURIComponent(apiKey)}&cx=${encodeURIComponent(cseId)}&q=${encodeURIComponent(this.params.query)}&num=5`;
+++
+++      const response = await fetchWithTimeout(searchUrl, 10000, { signal });
+++      if (!response.ok) {
+++        throw new Error(
+++          `Custom Search API returned status ${response.status}`,
+++        );
+++      }
+++
+++      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+++      const data = (await response.json()) as {
+++        items?: Array<{
+++          title?: string;
+++          link?: string;
+++          snippet?: string;
+++        }>;
+++      };
+++
+++      if (!data.items || data.items.length === 0) {
+++        return {
+++          llmContent: `No search results found for query: "${this.params.query}"`,
+++          returnDisplay: 'No results found.',
+++        };
+++      }
+++
+++      // Format search results
+++      const formattedResults = data.items
+++        .map(
+++          (item, i) =>
+++            `[${i + 1}] ${item.title || 'Untitled'}\n${item.link || ''}\n${item.snippet || ''}`,
+++        )
+++        .join('\n\n');
+++
+++      // Pass results to LLM for synthesis (use web-fetch-fallback config
+++      // which doesn't include googleSearch tool that Claude can't use)
+++      const geminiClient = this.config.getGeminiClient();
+++      const synthesisPrompt = `Synthesize the following search results for the query "${this.params.query}" into a clear, accurate answer. Include inline citation numbers (e.g., [1], [2]) referencing the sources below. Focus on directly answering the query.\n\nSearch Results:\n${formattedResults}`;
+++
+++      const llmResponse = await geminiClient.generateContent(
+++        { model: 'web-fetch-fallback' },
+++        [{ role: 'user', parts: [{ text: synthesisPrompt }] }],
+++        signal,
+++        LlmRole.UTILITY_TOOL,
+++      );
+++
+++      const responseText = getResponseText(llmResponse) || formattedResults;
+++
+++      const sources = data.items.map((item) => ({
+++        web: { uri: item.link, title: item.title },
+++      }));
+++
+++      const sourceListFormatted = data.items.map(
+++        (item, i) =>
+++          `[${i + 1}] ${item.title || 'Untitled'} (${item.link || 'No URI'})`,
+++      );
+++
+++      const fullResponse =
+++        responseText + '\n\nSources:\n' + sourceListFormatted.join('\n');
+++
+++      return {
+++        llmContent: `Web search results for "${this.params.query}":\n\n${fullResponse}`,
+++        returnDisplay: `Search results for "${this.params.query}" returned.`,
+++        sources,
+++      };
+++    } catch (error: unknown) {
+++      const errorMessage = `Error during web search for query "${this.params.query}": ${getErrorMessage(error)}`;
+++      debugLogger.warn(errorMessage, error);
+++      return {
+++        llmContent: `Error: ${errorMessage}`,
+++        returnDisplay: `Error performing web search.`,
+++        error: {
+++          message: errorMessage,
+++          type: ToolErrorType.WEB_SEARCH_FAILED,
+++        },
+++      };
+++    }
+++  }
+++
++   async execute(signal: AbortSignal): Promise<WebSearchToolResult> {
+++    // Claude models don't support Gemini's googleSearch - use external search API
+++    if (isClaudeModel(this.config.getModel())) {
+++      return this.executeWithExternalSearch(signal);
+++    }
+++
++     const geminiClient = this.config.getGeminiClient();
++ 
++     try {
++diff --git a/packages/core/src/utils/retry.test.ts b/packages/core/src/utils/retry.test.ts
++index f63a5ed72..857593967 100644
++--- a/packages/core/src/utils/retry.test.ts
+++++ b/packages/core/src/utils/retry.test.ts
++@@ -9,7 +9,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
++ import { ApiError } from '@google/genai';
++ import { AuthType } from '../core/contentGenerator.js';
++ import { type HttpError, ModelNotFoundError } from './httpErrors.js';
++-import { retryWithBackoff } from './retry.js';
+++import { retryWithBackoff, isRetryableError } from './retry.js';
++ import { setSimulate429 } from './testUtils.js';
++ import { debugLogger } from './debugLogger.js';
++ import {
++@@ -814,4 +814,30 @@ describe('retryWithBackoff', () => {
++       expect(mockService.markTerminal).not.toHaveBeenCalled();
++     });
++   });
+++
+++  describe('Anthropic error handling', () => {
+++    it('errors with status 429 are retryable', () => {
+++      const e = new Error('rate limited');
+++      (e as any).status = 429;
+++      expect(isRetryableError(e)).toBe(true);
+++    });
+++
+++    it('errors with status 529 are retryable', () => {
+++      const e = new Error('overloaded');
+++      (e as any).status = 529;
+++      expect(isRetryableError(e)).toBe(true);
+++    });
+++
+++    it('errors with status 400 are NOT retryable', () => {
+++      const e = new Error('bad request');
+++      (e as any).status = 400;
+++      expect(isRetryableError(e)).toBe(false);
+++    });
+++
+++    it('errors with response.status are retryable', () => {
+++      const e = new Error('service unavailable');
+++      (e as any).response = { status: 503 };
+++      expect(isRetryableError(e)).toBe(true);
+++    });
+++  });
++ });
++diff --git a/packages/core/src/utils/retry.ts b/packages/core/src/utils/retry.ts
++index a16e823e7..fdfcfa6b8 100644
++--- a/packages/core/src/utils/retry.ts
+++++ b/packages/core/src/utils/retry.ts
++@@ -136,9 +136,11 @@ export function isRetryableError(
++     );
++   }
++ 
++-  // Check for status using helper (handles other error shapes)
+++  // Check for status using helper (handles other error shapes including
+++  // Anthropic SDK errors which have a `status` property for 429/529/etc.)
++   const status = getErrorStatus(error);
++   if (status !== undefined) {
+++    if (status === 400) return false; // Bad request - not retryable
++     return status === 429 || status === 499 || (status >= 500 && status < 600);
++   }
++ 
