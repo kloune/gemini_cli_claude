@@ -55,12 +55,7 @@ function mapGeminiModelToClaude(
   if (geminiModel.startsWith('claude-')) {
     return geminiModel;
   }
-  if (
-    geminiModel.includes('flash-lite') ||
-    geminiModel.includes('flash') ||
-    geminiModel === 'gemini-2.5-flash' ||
-    geminiModel === 'gemini-2.5-flash-lite'
-  ) {
+  if (geminiModel.includes('flash-lite') || geminiModel.includes('flash')) {
     return CLAUDE_HAIKU_MODEL;
   }
   if (geminiModel.includes('pro')) {
@@ -76,8 +71,7 @@ function mapGeminiModelToClaude(
  */
 function translateContentsToMessages(
   contents: Content[],
-): { messages: MessageParamType[]; system: string | undefined } {
-  let systemText: string | undefined;
+): { messages: MessageParamType[] } {
   const messages: MessageParamType[] = [];
 
   for (const content of contents) {
@@ -118,7 +112,7 @@ function translateContentsToMessages(
     });
   }
 
-  return { messages, system: systemText };
+  return { messages };
 }
 
 /**

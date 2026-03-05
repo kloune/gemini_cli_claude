@@ -6,7 +6,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { FinishReason } from '@google/genai';
-import type { GenerateContentParameters } from '@google/genai';
+import type { GenerateContentParameters, Content } from '@google/genai';
 
 const mockCreate = vi.fn();
 const mockStream = vi.fn();
@@ -97,10 +97,11 @@ describe('ClaudeContentGenerator', () => {
         ],
       });
       // Prepend user message since model can't be first
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
       req.contents = [
         { role: 'user', parts: [{ text: 'start' }] },
-        ...(req.contents as unknown[]),
-      ];
+        ...(req.contents as Content[]),
+      ] as Content[];
       const params = await callAndGetParams(req);
       const assistantContent = params.messages[1].content;
       expect(assistantContent[0].type).toBe('tool_use');
@@ -168,10 +169,11 @@ describe('ClaudeContentGenerator', () => {
           },
         ],
       });
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
       req.contents = [
         { role: 'user', parts: [{ text: 'q' }] },
-        ...(req.contents as unknown[]),
-      ];
+        ...(req.contents as Content[]),
+      ] as Content[];
       const params = await callAndGetParams(req);
       const assistantBlocks = params.messages[1].content;
       expect(assistantBlocks).toHaveLength(1);

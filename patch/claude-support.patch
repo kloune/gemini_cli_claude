@@ -517,10 +517,10 @@ index 54ea06356..a49eee292 100644
   *
 diff --git a/packages/core/src/core/claudeContentGenerator.test.ts b/packages/core/src/core/claudeContentGenerator.test.ts
 new file mode 100644
-index 000000000..9af182cca
+index 000000000..daf1d21aa
 --- /dev/null
 +++ b/packages/core/src/core/claudeContentGenerator.test.ts
-@@ -0,0 +1,465 @@
+@@ -0,0 +1,467 @@
 +/**
 + * @license
 + * Copyright 2025 Google LLC
@@ -529,7 +529,7 @@ index 000000000..9af182cca
 +
 +import { describe, it, expect, vi, beforeEach } from 'vitest';
 +import { FinishReason } from '@google/genai';
-+import type { GenerateContentParameters } from '@google/genai';
++import type { GenerateContentParameters, Content } from '@google/genai';
 +
 +const mockCreate = vi.fn();
 +const mockStream = vi.fn();
@@ -620,10 +620,11 @@ index 000000000..9af182cca
 +        ],
 +      });
 +      // Prepend user message since model can't be first
++      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
 +      req.contents = [
 +        { role: 'user', parts: [{ text: 'start' }] },
-+        ...(req.contents as unknown[]),
-+      ];
++        ...(req.contents as Content[]),
++      ] as Content[];
 +      const params = await callAndGetParams(req);
 +      const assistantContent = params.messages[1].content;
 +      expect(assistantContent[0].type).toBe('tool_use');
@@ -691,10 +692,11 @@ index 000000000..9af182cca
 +          },
 +        ],
 +      });
++      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
 +      req.contents = [
 +        { role: 'user', parts: [{ text: 'q' }] },
-+        ...(req.contents as unknown[]),
-+      ];
++        ...(req.contents as Content[]),
++      ] as Content[];
 +      const params = await callAndGetParams(req);
 +      const assistantBlocks = params.messages[1].content;
 +      expect(assistantBlocks).toHaveLength(1);
@@ -988,10 +990,10 @@ index 000000000..9af182cca
 +});
 diff --git a/packages/core/src/core/claudeContentGenerator.ts b/packages/core/src/core/claudeContentGenerator.ts
 new file mode 100644
-index 000000000..d5ca4db53
+index 000000000..8dcf06c96
 --- /dev/null
 +++ b/packages/core/src/core/claudeContentGenerator.ts
-@@ -0,0 +1,651 @@
+@@ -0,0 +1,645 @@
 +/**
 + * @license
 + * Copyright 2025 Google LLC
@@ -1049,12 +1051,7 @@ index 000000000..d5ca4db53
 +  if (geminiModel.startsWith('claude-')) {
 +    return geminiModel;
 +  }
-+  if (
-+    geminiModel.includes('flash-lite') ||
-+    geminiModel.includes('flash') ||
-+    geminiModel === 'gemini-2.5-flash' ||
-+    geminiModel === 'gemini-2.5-flash-lite'
-+  ) {
++  if (geminiModel.includes('flash-lite') || geminiModel.includes('flash')) {
 +    return CLAUDE_HAIKU_MODEL;
 +  }
 +  if (geminiModel.includes('pro')) {
@@ -1070,8 +1067,7 @@ index 000000000..d5ca4db53
 + */
 +function translateContentsToMessages(
 +  contents: Content[],
-+): { messages: MessageParamType[]; system: string | undefined } {
-+  let systemText: string | undefined;
++): { messages: MessageParamType[] } {
 +  const messages: MessageParamType[] = [];
 +
 +  for (const content of contents) {
@@ -1112,7 +1108,7 @@ index 000000000..d5ca4db53
 +    });
 +  }
 +
-+  return { messages, system: systemText };
++  return { messages };
 +}
 +
 +/**
@@ -2708,10 +2704,164 @@ index 000000000..3238b75d0
 +  for lightweight calls, but may be more expensive than Gemini Flash Lite.
 diff --git a/patch/claude-support.patch b/patch/claude-support.patch
 new file mode 100644
-index 000000000..3afa2f7a6
+index 000000000..deee83a58
 --- /dev/null
 +++ b/patch/claude-support.patch
-@@ -0,0 +1,2278 @@
+@@ -0,0 +1,2671 @@
++diff --git a/package-lock.json b/package-lock.json
++index 85448711c..c172c71d9 100644
++--- a/package-lock.json
+++++ b/package-lock.json
++@@ -179,6 +179,36 @@
++         "node": ">=6.0.0"
++       }
++     },
+++    "node_modules/@anthropic-ai/sdk": {
+++      "version": "0.78.0",
+++      "resolved": "https://registry.npmjs.org/@anthropic-ai/sdk/-/sdk-0.78.0.tgz",
+++      "integrity": "sha512-PzQhR715td/m1UaaN5hHXjYB8Gl2lF9UVhrrGrZeysiF6Rb74Wc9GCB8hzLdzmQtBd1qe89F9OptgB9Za1Ib5w==",
+++      "license": "MIT",
+++      "dependencies": {
+++        "json-schema-to-ts": "^3.1.1"
+++      },
+++      "bin": {
+++        "anthropic-ai-sdk": "bin/cli"
+++      },
+++      "peerDependencies": {
+++        "zod": "^3.25.0 || ^4.0.0"
+++      },
+++      "peerDependenciesMeta": {
+++        "zod": {
+++          "optional": true
+++        }
+++      }
+++    },
+++    "node_modules/@anthropic-ai/vertex-sdk": {
+++      "version": "0.14.4",
+++      "resolved": "https://registry.npmjs.org/@anthropic-ai/vertex-sdk/-/vertex-sdk-0.14.4.tgz",
+++      "integrity": "sha512-BZUPRWghZxfSFtAxU563wH+jfWBPoedAwsVxG35FhmNsjeV8tyfN+lFriWhCpcZApxA4NdT6Soov+PzfnxxD5g==",
+++      "license": "MIT",
+++      "dependencies": {
+++        "@anthropic-ai/sdk": ">=0.50.3 <1",
+++        "google-auth-library": "^9.4.2"
+++      }
+++    },
++     "node_modules/@azu/format-text": {
++       "version": "1.0.2",
++       "resolved": "https://registry.npmjs.org/@azu/format-text/-/format-text-1.0.2.tgz",
++@@ -457,6 +487,15 @@
++         "node": ">=6.0.0"
++       }
++     },
+++    "node_modules/@babel/runtime": {
+++      "version": "7.28.6",
+++      "resolved": "https://registry.npmjs.org/@babel/runtime/-/runtime-7.28.6.tgz",
+++      "integrity": "sha512-05WQkdpL9COIMz4LjTxGpPNCdlpyimKppYNoJ5Di5EUObifl8t4tuLuUBBZEpoLYOmfvIWrsp9fCl0HoPRVTdA==",
+++      "license": "MIT",
+++      "engines": {
+++        "node": ">=6.9.0"
+++      }
+++    },
++     "node_modules/@babel/template": {
++       "version": "7.27.2",
++       "resolved": "https://registry.npmjs.org/@babel/template/-/template-7.27.2.tgz",
++@@ -11076,6 +11115,19 @@
++         "node": "^18.17.0 || >=20.5.0"
++       }
++     },
+++    "node_modules/json-schema-to-ts": {
+++      "version": "3.1.1",
+++      "resolved": "https://registry.npmjs.org/json-schema-to-ts/-/json-schema-to-ts-3.1.1.tgz",
+++      "integrity": "sha512-+DWg8jCJG2TEnpy7kOm/7/AxaYoaRbjVB4LFZLySZlWn8exGs3A4OLJR966cVvU26N7X9TWxl+Jsw7dzAqKT6g==",
+++      "license": "MIT",
+++      "dependencies": {
+++        "@babel/runtime": "^7.18.3",
+++        "ts-algebra": "^2.0.0"
+++      },
+++      "engines": {
+++        "node": ">=16"
+++      }
+++    },
++     "node_modules/json-schema-traverse": {
++       "version": "0.4.1",
++       "resolved": "https://registry.npmjs.org/json-schema-traverse/-/json-schema-traverse-0.4.1.tgz",
++@@ -16046,6 +16098,12 @@
++         "node": "10.* || >= 12.*"
++       }
++     },
+++    "node_modules/ts-algebra": {
+++      "version": "2.0.0",
+++      "resolved": "https://registry.npmjs.org/ts-algebra/-/ts-algebra-2.0.0.tgz",
+++      "integrity": "sha512-FPAhNPFMrkwz76P7cdjdmiShwMynZYN6SgOujD1urY4oNm80Ou9oMdmbR45LotcKOXoy7wSmHkRFE6Mxbrhefw==",
+++      "license": "MIT"
+++    },
++     "node_modules/ts-api-utils": {
++       "version": "2.4.0",
++       "resolved": "https://registry.npmjs.org/ts-api-utils/-/ts-api-utils-2.4.0.tgz",
++@@ -17448,6 +17506,7 @@
++       "license": "Apache-2.0",
++       "dependencies": {
++         "@a2a-js/sdk": "^0.3.8",
+++        "@anthropic-ai/vertex-sdk": "^0.14.4",
++         "@google-cloud/logging": "^11.2.1",
++         "@google-cloud/opentelemetry-cloud-monitoring-exporter": "^0.21.0",
++         "@google-cloud/opentelemetry-cloud-trace-exporter": "^3.0.0",
++diff --git a/packages/cli/src/ui/components/ModelDialog.tsx b/packages/cli/src/ui/components/ModelDialog.tsx
++index 7d7fea4d8..7677454b6 100644
++--- a/packages/cli/src/ui/components/ModelDialog.tsx
+++++ b/packages/cli/src/ui/components/ModelDialog.tsx
++@@ -16,6 +16,9 @@ import {
++   DEFAULT_GEMINI_FLASH_MODEL,
++   DEFAULT_GEMINI_FLASH_LITE_MODEL,
++   DEFAULT_GEMINI_MODEL_AUTO,
+++  CLAUDE_OPUS_MODEL,
+++  CLAUDE_SONNET_MODEL,
+++  CLAUDE_HAIKU_MODEL,
++   ModelSlashCommandEvent,
++   logModelSlashCommand,
++   getDisplayString,
++@@ -56,6 +59,9 @@ export function ModelDialog({ onClose }: ModelDialogProps): React.JSX.Element {
++       PREVIEW_GEMINI_3_1_MODEL,
++       PREVIEW_GEMINI_3_1_CUSTOM_TOOLS_MODEL,
++       PREVIEW_GEMINI_FLASH_MODEL,
+++      CLAUDE_OPUS_MODEL,
+++      CLAUDE_SONNET_MODEL,
+++      CLAUDE_HAIKU_MODEL,
++     ];
++     if (manualModels.includes(preferredModel)) {
++       return preferredModel;
++@@ -155,8 +161,30 @@ export function ModelDialog({ onClose }: ModelDialogProps): React.JSX.Element {
++         },
++       );
++     }
+++
+++    // Add Claude models when using Vertex AI auth
+++    if (selectedAuthType === AuthType.USE_VERTEX_AI) {
+++      list.push(
+++        {
+++          value: CLAUDE_OPUS_MODEL,
+++          title: getDisplayString(CLAUDE_OPUS_MODEL),
+++          key: CLAUDE_OPUS_MODEL,
+++        },
+++        {
+++          value: CLAUDE_SONNET_MODEL,
+++          title: getDisplayString(CLAUDE_SONNET_MODEL),
+++          key: CLAUDE_SONNET_MODEL,
+++        },
+++        {
+++          value: CLAUDE_HAIKU_MODEL,
+++          title: getDisplayString(CLAUDE_HAIKU_MODEL),
+++          key: CLAUDE_HAIKU_MODEL,
+++        },
+++      );
+++    }
+++
++     return list;
++-  }, [shouldShowPreviewModels, useGemini31, useCustomToolModel]);
+++  }, [shouldShowPreviewModels, useGemini31, useCustomToolModel, selectedAuthType]);
++ 
++   const options = view === 'main' ? mainOptions : manualOptions;
++ 
 +diff --git a/packages/core/package.json b/packages/core/package.json
 +index 827c09bc6..e5eeef19e 100644
 +--- a/packages/core/package.json
@@ -3077,10 +3227,10 @@ index 000000000..3afa2f7a6
 +  *
 +diff --git a/packages/core/src/core/claudeContentGenerator.test.ts b/packages/core/src/core/claudeContentGenerator.test.ts
 +new file mode 100644
-+index 000000000..9af182cca
++index 000000000..daf1d21aa
 +--- /dev/null
 ++++ b/packages/core/src/core/claudeContentGenerator.test.ts
-+@@ -0,0 +1,465 @@
++@@ -0,0 +1,467 @@
 ++/**
 ++ * @license
 ++ * Copyright 2025 Google LLC
@@ -3089,7 +3239,7 @@ index 000000000..3afa2f7a6
 ++
 ++import { describe, it, expect, vi, beforeEach } from 'vitest';
 ++import { FinishReason } from '@google/genai';
-++import type { GenerateContentParameters } from '@google/genai';
+++import type { GenerateContentParameters, Content } from '@google/genai';
 ++
 ++const mockCreate = vi.fn();
 ++const mockStream = vi.fn();
@@ -3180,10 +3330,11 @@ index 000000000..3afa2f7a6
 ++        ],
 ++      });
 ++      // Prepend user message since model can't be first
+++      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
 ++      req.contents = [
 ++        { role: 'user', parts: [{ text: 'start' }] },
-++        ...(req.contents as unknown[]),
-++      ];
+++        ...(req.contents as Content[]),
+++      ] as Content[];
 ++      const params = await callAndGetParams(req);
 ++      const assistantContent = params.messages[1].content;
 ++      expect(assistantContent[0].type).toBe('tool_use');
@@ -3251,10 +3402,11 @@ index 000000000..3afa2f7a6
 ++          },
 ++        ],
 ++      });
+++      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
 ++      req.contents = [
 ++        { role: 'user', parts: [{ text: 'q' }] },
-++        ...(req.contents as unknown[]),
-++      ];
+++        ...(req.contents as Content[]),
+++      ] as Content[];
 ++      const params = await callAndGetParams(req);
 ++      const assistantBlocks = params.messages[1].content;
 ++      expect(assistantBlocks).toHaveLength(1);
@@ -3548,10 +3700,10 @@ index 000000000..3afa2f7a6
 ++});
 +diff --git a/packages/core/src/core/claudeContentGenerator.ts b/packages/core/src/core/claudeContentGenerator.ts
 +new file mode 100644
-+index 000000000..d5ca4db53
++index 000000000..8dcf06c96
 +--- /dev/null
 ++++ b/packages/core/src/core/claudeContentGenerator.ts
-+@@ -0,0 +1,651 @@
++@@ -0,0 +1,645 @@
 ++/**
 ++ * @license
 ++ * Copyright 2025 Google LLC
@@ -3609,12 +3761,7 @@ index 000000000..3afa2f7a6
 ++  if (geminiModel.startsWith('claude-')) {
 ++    return geminiModel;
 ++  }
-++  if (
-++    geminiModel.includes('flash-lite') ||
-++    geminiModel.includes('flash') ||
-++    geminiModel === 'gemini-2.5-flash' ||
-++    geminiModel === 'gemini-2.5-flash-lite'
-++  ) {
+++  if (geminiModel.includes('flash-lite') || geminiModel.includes('flash')) {
 ++    return CLAUDE_HAIKU_MODEL;
 ++  }
 ++  if (geminiModel.includes('pro')) {
@@ -3630,8 +3777,7 @@ index 000000000..3afa2f7a6
 ++ */
 ++function translateContentsToMessages(
 ++  contents: Content[],
-++): { messages: MessageParamType[]; system: string | undefined } {
-++  let systemText: string | undefined;
+++): { messages: MessageParamType[] } {
 ++  const messages: MessageParamType[] = [];
 ++
 ++  for (const content of contents) {
@@ -3672,7 +3818,7 @@ index 000000000..3afa2f7a6
 ++    });
 ++  }
 ++
-++  return { messages, system: systemText };
+++  return { messages };
 ++}
 ++
 ++/**
@@ -4990,3 +5136,247 @@ index 000000000..3afa2f7a6
 +     return status === 429 || status === 499 || (status >= 500 && status < 600);
 +   }
 + 
++diff --git a/patch/README.txt b/patch/README.txt
++new file mode 100644
++index 000000000..3238b75d0
++--- /dev/null
+++++ b/patch/README.txt
++@@ -0,0 +1,270 @@
+++================================================================================
+++  Claude Model Support via Vertex AI - Patch for Gemini CLI
+++================================================================================
+++
+++PATCH FILE:   claude-support.patch
+++BASE COMMIT:  717660997d652d62c89868272dff293aaa621965
+++              feat(sandbox): add experimental LXC container sandbox support (#20735)
+++BRANCH:       main
+++DATE:         2026-03-05
+++
+++
+++PREREQUISITES
+++-------------
+++
+++1. Clone or checkout the gemini-cli repository at the base commit:
+++
+++     git clone https://github.com/google-gemini/gemini-cli.git
+++     cd gemini-cli
+++     git checkout 717660997d652d62c89868272dff293aaa621965
+++
+++2. Ensure Node.js >= 20 is installed.
+++
+++
+++HOW TO APPLY THE PATCH
+++----------------------
+++
+++From the repository root (gemini-cli/):
+++
+++     git apply patch/claude-support.patch
+++
+++If there are whitespace warnings, use:
+++
+++     git apply --whitespace=nowarn patch/claude-support.patch
+++
+++To preview what the patch will do without applying:
+++
+++     git apply --stat patch/claude-support.patch
+++     git apply --check patch/claude-support.patch
+++
+++
+++AFTER APPLYING
+++--------------
+++
+++1. Install dependencies (the patch adds @anthropic-ai/vertex-sdk):
+++
+++     npm install
+++
+++2. Build:
+++
+++     npm run build
+++
+++3. Run tests:
+++
+++     cd packages/core
+++     npx vitest run
+++
+++
+++HOW TO REVERT THE PATCH
+++------------------------
+++
+++     git apply -R patch/claude-support.patch
+++     npm install
+++
+++
+++WHAT THE PATCH CONTAINS
+++-----------------------
+++
+++25 files changed (23 modified, 2 new), ~2400 lines.
+++
+++New files:
+++  - packages/core/src/core/claudeContentGenerator.ts     (~580 lines)
+++    Adapter implementing ContentGenerator interface for Claude on Vertex AI.
+++    Translates Gemini API types <-> Anthropic Messages API types.
+++
+++  - packages/core/src/core/claudeContentGenerator.test.ts (~350 lines)
+++    26 unit tests for the adapter.
+++
+++Modified files - Implementation:
+++  - packages/core/package.json                  - Added @anthropic-ai/vertex-sdk dependency
+++  - packages/core/src/config/models.ts          - Claude model constants, aliases, isClaudeModel()
+++  - packages/core/src/config/defaultModelConfigs.ts - Claude model configs (opus, sonnet, haiku)
+++  - packages/core/src/core/contentGenerator.ts  - Claude routing in createContentGenerator()
+++  - packages/core/src/core/geminiChat.ts        - Skip thoughtSignatures for Claude
+++  - packages/core/src/core/tokenLimits.ts       - 200k context window for Claude
+++  - packages/core/src/config/config.ts          - Provider switch detection in setModel()
+++  - packages/core/src/prompts/snippets.ts       - Model-aware preamble identity
+++  - packages/core/src/prompts/promptProvider.ts - Pass model name to preamble
+++  - packages/core/src/tools/web-search.ts       - External search API path for Claude
+++  - packages/core/src/tools/web-fetch.ts        - Fallback/experimental path for Claude
+++  - packages/core/src/utils/retry.ts            - Anthropic error retryability comment+guard
+++  - packages/cli/src/ui/components/ModelDialog.tsx - Claude models in Vertex AI picker
+++  - package-lock.json                           - Updated lockfile
+++
+++Modified files - Tests:
+++  - packages/core/src/config/models.test.ts          - 17 new Claude model tests
+++  - packages/core/src/core/contentGenerator.test.ts  - 4 new Claude auth tests
+++  - packages/core/src/config/config.test.ts          - 3 new provider switching tests
+++  - packages/core/src/utils/retry.test.ts            - 4 new Anthropic error tests
+++  - packages/core/src/prompts/promptProvider.test.ts - 2 new preamble tests
+++  - packages/core/src/tools/web-search.test.ts       - 2 new Claude search tests
+++  - packages/core/src/tools/web-fetch.test.ts        - 2 new Claude fetch tests
+++
+++Modified files - Test infrastructure:
+++  - packages/core/src/services/test-data/resolved-aliases.golden.json
+++  - packages/core/src/services/test-data/resolved-aliases-retry.golden.json
+++
+++
+++GCP SETUP — VERTEX AI AUTHENTICATION
+++-------------------------------------
+++
+++Claude models on Vertex AI use the same GCP credentials as Gemini on Vertex AI.
+++The Anthropic Vertex SDK authenticates via Google Application Default Credentials
+++(ADC), which are set up through the gcloud CLI.
+++
+++### Step 1: Install the gcloud CLI
+++
+++  If not already installed, follow:
+++  https://cloud.google.com/sdk/docs/install
+++
+++### Step 2: Authenticate with GCP
+++
+++  Log in to your Google Cloud account:
+++
+++    gcloud auth login
+++
+++  Set up Application Default Credentials (ADC) — this is what the SDK uses:
+++
+++    gcloud auth application-default login
+++
+++  Both commands open a browser for OAuth. The ADC credentials are stored at
+++  ~/.config/gcloud/application_default_credentials.json and are automatically
+++  picked up by the Anthropic Vertex SDK (via google-auth-library).
+++
+++### Step 3: Select or create a GCP project
+++
+++  List your projects:
+++
+++    gcloud projects list
+++
+++  Set your active project:
+++
+++    gcloud config set project YOUR_PROJECT_ID
+++
+++### Step 4: Enable the Vertex AI API
+++
+++  The Vertex AI API must be enabled on your project:
+++
+++    gcloud services enable aiplatform.googleapis.com --project=YOUR_PROJECT_ID
+++
+++### Step 5: Verify Claude model access
+++
+++  Claude models on Vertex AI require access through the Anthropic model garden.
+++  Go to the Google Cloud Console:
+++    https://console.cloud.google.com/vertex-ai/publishers/anthropic/model-garden
+++
+++  Enable the specific Claude model(s) you want to use. This grants your project
+++  permission to call Claude via the Vertex AI API.
+++
+++### Step 6: Set environment variables
+++
+++  These are REQUIRED for Claude on Vertex AI:
+++
+++    export GOOGLE_GENAI_USE_VERTEXAI=true
+++    export GOOGLE_CLOUD_PROJECT=YOUR_PROJECT_ID
+++    export GOOGLE_CLOUD_LOCATION=REGION
+++
+++  GOOGLE_CLOUD_LOCATION determines the Vertex AI regional endpoint. Claude is
+++  available in these regions (check for latest availability):
+++    - global              (routes to nearest available region)
+++    - us-east5            (Columbus, Ohio)
+++    - us-central1         (Iowa)
+++    - europe-west1        (Belgium)
+++    - europe-west4        (Netherlands)
+++    - asia-southeast1     (Singapore)
+++
+++  Example with all variables:
+++
+++    export GOOGLE_GENAI_USE_VERTEXAI=true
+++    export GOOGLE_CLOUD_PROJECT=my-ai-project-123
+++    export GOOGLE_CLOUD_LOCATION=us-east5
+++
+++  You can also add these to a .env file in your project root — gemini_cli
+++  loads .env files automatically via dotenv.
+++
+++### Quick start (all commands together)
+++
+++    # One-time setup
+++    gcloud auth login
+++    gcloud auth application-default login
+++    gcloud config set project YOUR_PROJECT_ID
+++    gcloud services enable aiplatform.googleapis.com --project=YOUR_PROJECT_ID
+++
+++    # Set env vars (add to .bashrc or .env for persistence)
+++    export GOOGLE_GENAI_USE_VERTEXAI=true
+++    export GOOGLE_CLOUD_PROJECT=YOUR_PROJECT_ID
+++    export GOOGLE_CLOUD_LOCATION=us-east5
+++
+++    # Run gemini_cli with Claude
+++    gemini --model claude-sonnet
+++
+++
+++USAGE
+++-----
+++
+++After applying the patch and configuring GCP auth (see above), Claude models
+++are available:
+++
+++  gemini --model claude-sonnet
+++  gemini --model claude-opus
+++  gemini --model claude-haiku
+++
+++Available models and aliases:
+++  claude-opus    -> claude-opus-4-6
+++  claude-sonnet  -> claude-sonnet-4-6
+++  claude-haiku   -> claude-haiku-4-5@20251001
+++
+++Models can also be selected interactively via the /model command in the UI.
+++Claude options appear when Vertex AI auth is active.
+++
+++You can switch models mid-session:
+++  /model set claude-sonnet
+++  /model set gemini-2.5-pro
+++
+++When switching between Gemini and Claude, the content generator is automatically
+++recreated and conversation history is adapted.
+++
+++
+++WEB SEARCH WITH CLAUDE
+++-----------------------
+++
+++Claude does not support Gemini's built-in googleSearch tool. Instead, when
+++Claude is active, web search uses the Google Custom Search JSON API.
+++
+++To enable web search with Claude:
+++
+++1. Create a Custom Search Engine at:
+++   https://programmablesearchengine.google.co
+\ No newline at end of file
