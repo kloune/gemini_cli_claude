@@ -3,10 +3,10 @@
 ================================================================================
 
 PATCH FILE:   claude-support.patch
-BASE COMMIT:  717660997d652d62c89868272dff293aaa621965
-              feat(sandbox): add experimental LXC container sandbox support (#20735)
+BASE COMMIT:  ca7ac00030ebd7bf01f51b65a8275790840cf4ed
+              docs: fix typo 'allowslisted' -> 'allowlisted' in mcp-server.md (#21665)
 BRANCH:       main
-DATE:         2026-03-05
+DATE:         2026-03-09
 
 
 PREREQUISITES
@@ -16,7 +16,7 @@ PREREQUISITES
 
      git clone https://github.com/google-gemini/gemini-cli.git
      cd gemini-cli
-     git checkout 717660997d652d62c89868272dff293aaa621965
+     git checkout ca7ac00030ebd7bf01f51b65a8275790840cf4ed
 
 2. Ensure Node.js >= 20 is installed.
 
@@ -45,11 +45,21 @@ AFTER APPLYING
 
      npm install
 
-2. Build:
+2. Build all packages:
 
      npm run build
 
-3. Run tests:
+   NOTE: The monorepo builds workspaces in parallel. The CLI package may fail
+   on the first run if it compiles before the devtools package finishes (the
+   CLI imports devtools types). If that happens, rebuild the CLI package:
+
+     npm run build --workspace=@google/gemini-cli
+
+3. Bundle the CLI (creates bundle/gemini.js):
+
+     npm run bundle
+
+4. Run tests:
 
      cd packages/core
      npx vitest run
@@ -65,15 +75,16 @@ HOW TO REVERT THE PATCH
 WHAT THE PATCH CONTAINS
 -----------------------
 
-25 files changed (23 modified, 2 new), ~2400 lines.
+24 files changed (22 modified, 2 new), ~1865 lines.
 
 New files:
-  - packages/core/src/core/claudeContentGenerator.ts     (~580 lines)
+  - packages/core/src/core/claudeContentGenerator.ts     (~645 lines)
     Adapter implementing ContentGenerator interface for Claude on Vertex AI.
     Translates Gemini API types <-> Anthropic Messages API types.
 
-  - packages/core/src/core/claudeContentGenerator.test.ts (~350 lines)
-    26 unit tests for the adapter.
+  - packages/core/src/core/claudeContentGenerator.test.ts (~467 lines)
+    Unit tests for the adapter. Uses explicit Content[] casts to satisfy
+    the @google/genai ContentListUnion type union.
 
 Modified files - Implementation:
   - packages/core/package.json                  - Added @anthropic-ai/vertex-sdk dependency
@@ -89,7 +100,6 @@ Modified files - Implementation:
   - packages/core/src/tools/web-fetch.ts        - Fallback/experimental path for Claude
   - packages/core/src/utils/retry.ts            - Anthropic error retryability comment+guard
   - packages/cli/src/ui/components/ModelDialog.tsx - Claude models in Vertex AI picker
-  - package-lock.json                           - Updated lockfile
 
 Modified files - Tests:
   - packages/core/src/config/models.test.ts          - 17 new Claude model tests
@@ -103,6 +113,9 @@ Modified files - Tests:
 Modified files - Test infrastructure:
   - packages/core/src/services/test-data/resolved-aliases.golden.json
   - packages/core/src/services/test-data/resolved-aliases-retry.golden.json
+
+NOTE: package-lock.json is NOT included in the patch (it is fragile across
+upstream updates). Running `npm install` after applying handles it.
 
 
 GCP SETUP — VERTEX AI AUTHENTICATION

@@ -20,10 +20,16 @@ import { ClaudeContentGenerator } from './claudeContentGenerator.js';
 import { LlmRole } from '../telemetry/llmRole.js';
 
 function makeGenerator() {
-  return new ClaudeContentGenerator('test-project', 'us-east5', 'claude-sonnet-4-6');
+  return new ClaudeContentGenerator(
+    'test-project',
+    'us-east5',
+    'claude-sonnet-4-6',
+  );
 }
 
-function makeRequest(overrides: Partial<GenerateContentParameters> = {}): GenerateContentParameters {
+function makeRequest(
+  overrides: Partial<GenerateContentParameters> = {},
+): GenerateContentParameters {
   return {
     model: 'claude-sonnet-4-6',
     contents: [
@@ -31,7 +37,7 @@ function makeRequest(overrides: Partial<GenerateContentParameters> = {}): Genera
         role: 'user',
         parts: [{ text: 'hello' }],
       },
-    ],
+    ] as Content[],
     config: {},
     ...overrides,
   } as GenerateContentParameters;
@@ -62,7 +68,7 @@ describe('ClaudeContentGenerator', () => {
         contents: [
           { role: 'user', parts: [{ text: 'hi' }] },
           { role: 'model', parts: [{ text: 'hello' }] },
-        ],
+        ] as Content[],
       });
       const params = await callAndGetParams(req);
       expect(params.messages[0].role).toBe('user');
@@ -71,7 +77,9 @@ describe('ClaudeContentGenerator', () => {
 
     it('translates text parts correctly', async () => {
       const req = makeRequest({
-        contents: [{ role: 'user', parts: [{ text: 'test message' }] }],
+        contents: [
+          { role: 'user', parts: [{ text: 'test message' }] },
+        ] as Content[],
       });
       const params = await callAndGetParams(req);
       expect(params.messages[0].content).toEqual([
@@ -94,10 +102,10 @@ describe('ClaudeContentGenerator', () => {
               },
             ],
           },
-        ],
+        ] as Content[],
       });
       // Prepend user message since model can't be first
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+       
       req.contents = [
         { role: 'user', parts: [{ text: 'start' }] },
         ...(req.contents as Content[]),
@@ -126,7 +134,7 @@ describe('ClaudeContentGenerator', () => {
               },
             ],
           },
-        ],
+        ] as Content[],
       });
       const params = await callAndGetParams(req);
       const block = params.messages[0].content[0];
@@ -151,7 +159,7 @@ describe('ClaudeContentGenerator', () => {
               },
             ],
           },
-        ],
+        ] as Content[],
       });
       const params = await callAndGetParams(req);
       expect(params.messages[0].content[0].content).toBe('done');
@@ -167,9 +175,9 @@ describe('ClaudeContentGenerator', () => {
               { text: 'visible answer' },
             ],
           },
-        ],
+        ] as Content[],
       });
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+       
       req.contents = [
         { role: 'user', parts: [{ text: 'q' }] },
         ...(req.contents as Content[]),
@@ -199,7 +207,7 @@ describe('ClaudeContentGenerator', () => {
         contents: [
           { role: 'user', parts: [{ text: 'first' }] },
           { role: 'user', parts: [{ text: 'second' }] },
-        ],
+        ] as Content[],
       });
       const params = await callAndGetParams(req);
       expect(params.messages).toHaveLength(1);
@@ -246,9 +254,7 @@ describe('ClaudeContentGenerator', () => {
           tools: [
             { googleSearch: {} },
             {
-              functionDeclarations: [
-                { name: 'keep_me', description: 'stays' },
-              ],
+              functionDeclarations: [{ name: 'keep_me', description: 'stays' }],
             },
           ],
         },
@@ -360,9 +366,7 @@ describe('ClaudeContentGenerator', () => {
       } as any);
       const params = await callAndGetParams(req);
       expect(params.system).toContain('Base instruction.');
-      expect(params.system).toContain(
-        'You MUST respond with valid JSON only',
-      );
+      expect(params.system).toContain('You MUST respond with valid JSON only');
     });
   });
 
@@ -432,7 +436,9 @@ describe('ClaudeContentGenerator', () => {
       const gen = makeGenerator();
       const result = await gen.countTokens({
         model: 'claude-sonnet-4-6',
-        contents: [{ role: 'user', parts: [{ text: 'hello world' }] }],
+        contents: [
+          { role: 'user', parts: [{ text: 'hello world' }] },
+        ] as Content[],
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any);
       expect(result.totalTokens).toBeGreaterThanOrEqual(0);
