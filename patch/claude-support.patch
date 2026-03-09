@@ -427,7 +427,7 @@ index 32014d5fb..6fbae74df 100644
   *
 diff --git a/packages/core/src/core/claudeContentGenerator.test.ts b/packages/core/src/core/claudeContentGenerator.test.ts
 new file mode 100644
-index 000000000..09e6e62bc
+index 000000000..4b424589a
 --- /dev/null
 +++ b/packages/core/src/core/claudeContentGenerator.test.ts
 @@ -0,0 +1,540 @@
@@ -538,7 +538,7 @@ index 000000000..09e6e62bc
 +        ] as Content[],
 +      });
 +      // Prepend user message since model can't be first
-+       
++
 +      req.contents = [
 +        { role: 'user', parts: [{ text: 'start' }] },
 +        ...(req.contents as Content[]),
@@ -610,7 +610,7 @@ index 000000000..09e6e62bc
 +          },
 +        ] as Content[],
 +      });
-+       
++
 +      req.contents = [
 +        { role: 'user', parts: [{ text: 'q' }] },
 +        ...(req.contents as Content[]),
@@ -973,10 +973,10 @@ index 000000000..09e6e62bc
 +});
 diff --git a/packages/core/src/core/claudeContentGenerator.ts b/packages/core/src/core/claudeContentGenerator.ts
 new file mode 100644
-index 000000000..466a561ba
+index 000000000..533f5e902
 --- /dev/null
 +++ b/packages/core/src/core/claudeContentGenerator.ts
-@@ -0,0 +1,656 @@
+@@ -0,0 +1,653 @@
 +/**
 + * @license
 + * Copyright 2025 Google LLC
@@ -1000,10 +1000,7 @@ index 000000000..466a561ba
 +import type { LlmRole } from '../telemetry/llmRole.js';
 +import { estimateTokenCountSync } from '../utils/tokenCalculation.js';
 +import { debugLogger } from '../utils/debugLogger.js';
-+import {
-+  CLAUDE_SONNET_MODEL,
-+  CLAUDE_HAIKU_MODEL,
-+} from '../config/models.js';
++import { CLAUDE_SONNET_MODEL, CLAUDE_HAIKU_MODEL } from '../config/models.js';
 +
 +// Vertex SDK for the client class
 +type AnthropicVertexType = import('@anthropic-ai/vertex-sdk').AnthropicVertex;
@@ -1017,8 +1014,7 @@ index 000000000..466a561ba
 +  import('@anthropic-ai/sdk/resources/messages/messages').MessageParam;
 +type ContentBlockParamType =
 +  import('@anthropic-ai/sdk/resources/messages/messages').ContentBlockParam;
-+type ToolType =
-+  import('@anthropic-ai/sdk/resources/messages/messages').Tool;
++type ToolType = import('@anthropic-ai/sdk/resources/messages/messages').Tool;
 +type MessageType =
 +  import('@anthropic-ai/sdk/resources/messages/messages').Message;
 +type MessageStreamEventType =
@@ -1048,16 +1044,14 @@ index 000000000..466a561ba
 + * Translates Gemini Content[] to Anthropic MessageParam[].
 + * Handles role mapping, message alternation merging, and part conversion.
 + */
-+function translateContentsToMessages(
-+  contents: Content[],
-+): { messages: MessageParamType[] } {
++function translateContentsToMessages(contents: Content[]): {
++  messages: MessageParamType[];
++} {
 +  const messages: MessageParamType[] = [];
 +
 +  for (const content of contents) {
 +    const role =
-+      content.role === 'model'
-+        ? ('assistant' as const)
-+        : ('user' as const);
++      content.role === 'model' ? ('assistant' as const) : ('user' as const);
 +
 +    const blocks = translateParts(content.parts || []);
 +    if (blocks.length === 0) continue;
@@ -1066,14 +1060,9 @@ index 000000000..466a561ba
 +    const lastMsg = messages[messages.length - 1];
 +    if (lastMsg && lastMsg.role === role) {
 +      if (Array.isArray(lastMsg.content)) {
-+        (lastMsg.content).push(
-+          ...(blocks),
-+        );
++        lastMsg.content.push(...blocks);
 +      } else {
-+        lastMsg.content = [
-+          { type: 'text', text: lastMsg.content },
-+          ...(blocks),
-+        ];
++        lastMsg.content = [{ type: 'text', text: lastMsg.content }, ...blocks];
 +      }
 +    } else {
 +      messages.push({
@@ -1163,9 +1152,7 @@ index 000000000..466a561ba
 +/**
 + * Translates Gemini Tool[] to Anthropic Tool[].
 + */
-+function translateTools(
-+  geminiTools: unknown[] | undefined,
-+): ToolType[] {
++function translateTools(geminiTools: unknown[] | undefined): ToolType[] {
 +  if (!geminiTools || !Array.isArray(geminiTools)) return [];
 +
 +  const claudeTools: ToolType[] = [];
@@ -1181,9 +1168,14 @@ index 000000000..466a561ba
 +      continue;
 +    }
 +
-+    if ('functionDeclarations' in tool && (tool as Record<string, unknown>)['functionDeclarations']) {
++    if (
++      'functionDeclarations' in tool &&
++      (tool as Record<string, unknown>)['functionDeclarations']
++    ) {
 +      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-+      const declarations = (tool as Record<string, unknown>)['functionDeclarations'] as Array<{
++      const declarations = (tool as Record<string, unknown>)[
++        'functionDeclarations'
++      ] as Array<{
 +        name?: string;
 +        description?: string;
 +        parameters?: Record<string, unknown>;
@@ -1235,7 +1227,7 @@ index 000000000..466a561ba
 +  }
 +
 +  if (typeof sysInstr === 'object' && 'text' in sysInstr) {
-+    return (sysInstr).text || undefined;
++    return sysInstr.text || undefined;
 +  }
 +
 +  return undefined;
@@ -1261,7 +1253,9 @@ index 000000000..466a561ba
 +/**
 + * Translates an Anthropic Message response to a Gemini GenerateContentResponse.
 + */
-+function translateResponseToGemini(message: MessageType): GenerateContentResponse {
++function translateResponseToGemini(
++  message: MessageType,
++): GenerateContentResponse {
 +  const parts: Part[] = [];
 +
 +  for (const block of message.content) {
@@ -1294,8 +1288,7 @@ index 000000000..466a561ba
 +    promptTokenCount: message.usage?.input_tokens,
 +    candidatesTokenCount: message.usage?.output_tokens,
 +    totalTokenCount:
-+      (message.usage?.input_tokens || 0) +
-+      (message.usage?.output_tokens || 0),
++      (message.usage?.input_tokens || 0) + (message.usage?.output_tokens || 0),
 +  };
 +
 +  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
@@ -1341,8 +1334,8 @@ index 000000000..466a561ba
 +  ): MessageCreateParamsBase {
 +    const model = mapGeminiModelToClaude(req.model, this.userModel);
 +    const contents = Array.isArray(req.contents)
-+      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-+      ? (req.contents as Content[])
++      ? // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
++        (req.contents as Content[])
 +      : [];
 +    const { messages } = translateContentsToMessages(contents);
 +
@@ -1351,16 +1344,18 @@ index 000000000..466a561ba
 +
 +    // Handle JSON mode: Claude doesn't support responseMimeType, so we add
 +    // explicit JSON instructions to the system prompt
-+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-+    const responseMimeType = (
++     
++    const responseMimeType =
 +      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-+      req.config as Record<string, unknown> | undefined
-+    )?.['responseMimeType'] as string | undefined;
-+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-+    const responseJsonSchema = (
++      (req.config as Record<string, unknown> | undefined)?.[
++        'responseMimeType'
++      ] as string | undefined;
++     
++    const responseJsonSchema =
 +      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-+      req.config as Record<string, unknown> | undefined
-+    )?.['responseJsonSchema'] as Record<string, unknown> | undefined;
++      (req.config as Record<string, unknown> | undefined)?.[
++        'responseJsonSchema'
++      ] as Record<string, unknown> | undefined;
 +
 +    if (responseMimeType === 'application/json') {
 +      const jsonInstruction = responseJsonSchema
@@ -1412,8 +1407,7 @@ index 000000000..466a561ba
 +
 +      if (hasThinking) {
 +        const MINIMUM_THINKING_BUDGET = 1024;
-+        let budgetTokens =
-+          budget && budget > 0 ? budget : 4096;
++        let budgetTokens = budget && budget > 0 ? budget : 4096;
 +        // Claude requires budget_tokens >= 1024 and < max_tokens
 +        budgetTokens = Math.max(MINIMUM_THINKING_BUDGET, budgetTokens);
 +        if (budgetTokens >= maxTokens) {
@@ -1438,7 +1432,10 @@ index 000000000..466a561ba
 +  ): Promise<GenerateContentResponse> {
 +    const client = await this.getClient();
 +    const baseParams = this.buildRequest(request);
-+    const params = { ...baseParams, stream: false as const } as MessageCreateParamsType;
++    const params = {
++      ...baseParams,
++      stream: false as const,
++    } as MessageCreateParamsType;
 +
 +    // Pass abort signal to the Anthropic SDK via request options
 +    const abortSignal = request.config?.abortSignal;
@@ -1521,10 +1518,10 @@ index 000000000..466a561ba
 +          } else if (delta.type === 'thinking_delta') {
 +            // Emit thinking deltas
 +            // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-+            const thinkingText = (delta as unknown as Record<string, string>)['thinking'];
-+            yield this.makeChunk([
-+              { text: thinkingText, thought: true },
-+            ]);
++            const thinkingText = (delta as unknown as Record<string, string>)[
++              'thinking'
++            ];
++            yield this.makeChunk([{ text: thinkingText, thought: true }]);
 +          }
 +          break;
 +        }
@@ -1614,8 +1611,8 @@ index 000000000..466a561ba
 +    // Claude has no countTokens API on Vertex.
 +    // Use character-based estimation as fallback.
 +    const contents = Array.isArray(request.contents)
-+      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-+      ? (request.contents as Content[])
++      ? // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
++        (request.contents as Content[])
 +      : [];
 +    const allParts = contents.flatMap((c) => c.parts || []);
 +    const tokenCount = estimateTokenCountSync(allParts);
@@ -1794,7 +1791,7 @@ index 2ce542033..3c3bcf4fe 100644
        if (config.customHeaders) {
          headers = { ...headers, ...config.customHeaders };
 diff --git a/packages/core/src/core/geminiChat.ts b/packages/core/src/core/geminiChat.ts
-index ae5f46db3..77d340876 100644
+index ae5f46db3..e23a2aa0c 100644
 --- a/packages/core/src/core/geminiChat.ts
 +++ b/packages/core/src/core/geminiChat.ts
 @@ -25,6 +25,7 @@ import type { Config } from '../config/config.js';
@@ -1805,16 +1802,17 @@ index ae5f46db3..77d340876 100644
    supportsModernFeatures,
  } from '../config/models.js';
  import { hasCycleInSchema } from '../tools/tools.js';
-@@ -419,7 +420,7 @@ export class GeminiChat {
+@@ -419,7 +420,8 @@ export class GeminiChat {
              const isContentError = error instanceof InvalidStreamError;
  
              if (
 -              (isContentError && isGemini2Model(model)) ||
-+              (isContentError && (isGemini2Model(model) || isClaudeModel(model))) ||
++              (isContentError &&
++                (isGemini2Model(model) || isClaudeModel(model))) ||
                (isRetryable && !signal.aborted)
              ) {
                // Check if we have more attempts left.
-@@ -742,7 +743,11 @@ export class GeminiChat {
+@@ -742,7 +744,11 @@ export class GeminiChat {
    // To ensure our requests validate, the first function call in every model
    // turn within the active loop must have a `thoughtSignature` property.
    // If we do not do this, we will get back 400 errors from the API.
@@ -1849,15 +1847,18 @@ index 39a3443e3..f38c52c55 100644
      case PREVIEW_GEMINI_MODEL:
      case PREVIEW_GEMINI_FLASH_MODEL:
 diff --git a/packages/core/src/fallback/handler.ts b/packages/core/src/fallback/handler.ts
-index ed8745400..1f514734d 100644
+index ed8745400..3e357cc52 100644
 --- a/packages/core/src/fallback/handler.ts
 +++ b/packages/core/src/fallback/handler.ts
-@@ -26,7 +26,7 @@ export async function handleFallback(
+@@ -26,7 +26,10 @@ export async function handleFallback(
    authType?: string,
    error?: unknown,
  ): Promise<string | boolean | null> {
 -  if (authType !== AuthType.LOGIN_WITH_GOOGLE) {
-+  if (authType !== AuthType.LOGIN_WITH_GOOGLE && authType !== AuthType.USE_VERTEX_AI) {
++  if (
++    authType !== AuthType.LOGIN_WITH_GOOGLE &&
++    authType !== AuthType.USE_VERTEX_AI
++  ) {
      return null;
    }
  
@@ -1947,7 +1948,7 @@ index 3b3334f96..e7009370c 100644
  
  export function renderCoreMandates(options?: CoreMandatesOptions): string {
 diff --git a/packages/core/src/services/test-data/resolved-aliases-retry.golden.json b/packages/core/src/services/test-data/resolved-aliases-retry.golden.json
-index bb6dabdd6..bcfc05e4f 100644
+index bb6dabdd6..5135875b1 100644
 --- a/packages/core/src/services/test-data/resolved-aliases-retry.golden.json
 +++ b/packages/core/src/services/test-data/resolved-aliases-retry.golden.json
 @@ -97,6 +97,24 @@
@@ -1975,15 +1976,8 @@ index bb6dabdd6..bcfc05e4f 100644
    "gemini-2.5-flash-base": {
      "model": "gemini-2.5-flash",
      "generateContentConfig": {
-@@ -253,4 +271,4 @@
-     "model": "gemini-3-pro-preview",
-     "generateContentConfig": {}
-   }
--}
-+}
-\ No newline at end of file
 diff --git a/packages/core/src/services/test-data/resolved-aliases.golden.json b/packages/core/src/services/test-data/resolved-aliases.golden.json
-index bb6dabdd6..bcfc05e4f 100644
+index bb6dabdd6..5135875b1 100644
 --- a/packages/core/src/services/test-data/resolved-aliases.golden.json
 +++ b/packages/core/src/services/test-data/resolved-aliases.golden.json
 @@ -97,6 +97,24 @@
@@ -2011,13 +2005,6 @@ index bb6dabdd6..bcfc05e4f 100644
    "gemini-2.5-flash-base": {
      "model": "gemini-2.5-flash",
      "generateContentConfig": {
-@@ -253,4 +271,4 @@
-     "model": "gemini-3-pro-preview",
-     "generateContentConfig": {}
-   }
--}
-+}
-\ No newline at end of file
 diff --git a/packages/core/src/tools/web-fetch.test.ts b/packages/core/src/tools/web-fetch.test.ts
 index 92ba4076b..829eaa6b0 100644
 --- a/packages/core/src/tools/web-fetch.test.ts
@@ -2378,17 +2365,16 @@ index 2756599b2..952188614 100644
  
      try {
 diff --git a/packages/core/src/utils/googleQuotaErrors.ts b/packages/core/src/utils/googleQuotaErrors.ts
-index d0c251e83..833c95372 100644
+index d0c251e83..65a99d507 100644
 --- a/packages/core/src/utils/googleQuotaErrors.ts
 +++ b/packages/core/src/utils/googleQuotaErrors.ts
-@@ -225,6 +225,20 @@ export function classifyGoogleError(error: unknown): unknown {
+@@ -225,6 +225,19 @@ export function classifyGoogleError(error: unknown): unknown {
      );
    }
  
 +  // Check for Anthropic 529 (overloaded) errors
 +  if (status === 529) {
-+    const errorMessage =
-+      error instanceof Error ? error.message : String(error);
++    const errorMessage = error instanceof Error ? error.message : String(error);
 +    return new RetryableQuotaError(
 +      errorMessage,
 +      googleApiError ?? {
