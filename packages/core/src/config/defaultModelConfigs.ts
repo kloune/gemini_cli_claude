@@ -95,6 +95,10 @@ export const DEFAULT_MODEL_CONFIGS: ModelConfigServiceConfig = {
         model: 'claude-opus-4-6',
         generateContentConfig: {
           temperature: 1,
+          // Claude API: temperature is mutually exclusive with topP/topK.
+          // Explicitly clear inherited values from 'base'.
+          topP: undefined,
+          topK: undefined,
         },
       },
     },
@@ -104,6 +108,8 @@ export const DEFAULT_MODEL_CONFIGS: ModelConfigServiceConfig = {
         model: 'claude-sonnet-4-6',
         generateContentConfig: {
           temperature: 1,
+          topP: undefined,
+          topK: undefined,
         },
       },
     },
@@ -113,6 +119,8 @@ export const DEFAULT_MODEL_CONFIGS: ModelConfigServiceConfig = {
         model: 'claude-haiku-4-5@20251001',
         generateContentConfig: {
           temperature: 1,
+          topP: undefined,
+          topK: undefined,
         },
       },
     },

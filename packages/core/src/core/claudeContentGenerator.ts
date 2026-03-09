@@ -21,10 +21,7 @@ import type { ContentGenerator } from './contentGenerator.js';
 import type { LlmRole } from '../telemetry/llmRole.js';
 import { estimateTokenCountSync } from '../utils/tokenCalculation.js';
 import { debugLogger } from '../utils/debugLogger.js';
-import {
-  CLAUDE_SONNET_MODEL,
-  CLAUDE_HAIKU_MODEL,
-} from '../config/models.js';
+import { CLAUDE_SONNET_MODEL, CLAUDE_HAIKU_MODEL } from '../config/models.js';
 
 // Vertex SDK for the client class
 type AnthropicVertexType = import('@anthropic-ai/vertex-sdk').AnthropicVertex;
@@ -38,8 +35,7 @@ type MessageParamType =
   import('@anthropic-ai/sdk/resources/messages/messages').MessageParam;
 type ContentBlockParamType =
   import('@anthropic-ai/sdk/resources/messages/messages').ContentBlockParam;
-type ToolType =
-  import('@anthropic-ai/sdk/resources/messages/messages').Tool;
+type ToolType = import('@anthropic-ai/sdk/resources/messages/messages').Tool;
 type MessageType =
   import('@anthropic-ai/sdk/resources/messages/messages').Message;
 type MessageStreamEventType =
@@ -69,16 +65,14 @@ function mapGeminiModelToClaude(
  * Translates Gemini Content[] to Anthropic MessageParam[].
  * Handles role mapping, message alternation merging, and part conversion.
  */
-function translateContentsToMessages(
-  contents: Content[],
-): { messages: MessageParamType[] } {
+function translateContentsToMessages(contents: Content[]): {
+  messages: MessageParamType[];
+} {
   const messages: MessageParamType[] = [];
 
   for (const content of contents) {
     const role =
-      content.role === 'model'
-        ? ('assistant' as const)
-        : ('user' as const);
+      content.role === 'model' ? ('assistant' as const) : ('user' as const);
 
     const blocks = translateParts(content.parts || []);
     if (blocks.length === 0) continue;
@@ -87,14 +81,9 @@ function translateContentsToMessages(
     const lastMsg = messages[messages.length - 1];
     if (lastMsg && lastMsg.role === role) {
       if (Array.isArray(lastMsg.content)) {
-        (lastMsg.content).push(
-          ...(blocks),
-        );
+        lastMsg.content.push(...blocks);
       } else {
-        lastMsg.content = [
-          { type: 'text', text: lastMsg.content },
-          ...(blocks),
-        ];
+        lastMsg.content = [{ type: 'text', text: lastMsg.content }, ...blocks];
       }
     } else {
       messages.push({
@@ -184,9 +173,7 @@ function translateParts(parts: Part[]): ContentBlockParamType[] {
 /**
  * Translates Gemini Tool[] to Anthropic Tool[].
  */
-function translateTools(
-  geminiTools: unknown[] | undefined,
-): ToolType[] {
+function translateTools(geminiTools: unknown[] | undefined): ToolType[] {
   if (!geminiTools || !Array.isArray(geminiTools)) return [];
 
   const claudeTools: ToolType[] = [];
@@ -202,9 +189,14 @@ function translateTools(
       continue;
     }
 
-    if ('functionDeclarations' in tool && (tool as Record<string, unknown>)['functionDeclarations']) {
+    if (
+      'functionDeclarations' in tool &&
+      (tool as Record<string, unknown>)['functionDeclarations']
+    ) {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-      const declarations = (tool as Record<string, unknown>)['functionDeclarations'] as Array<{
+      const declarations = (tool as Record<string, unknown>)[
+        'functionDeclarations'
+      ] as Array<{
         name?: string;
         description?: string;
         parameters?: Record<string, unknown>;
@@ -256,7 +248,7 @@ function extractSystemInstruction(
   }
 
   if (typeof sysInstr === 'object' && 'text' in sysInstr) {
-    return (sysInstr).text || undefined;
+    return sysInstr.text || undefined;
   }
 
   return undefined;
@@ -282,7 +274,9 @@ function translateStopReason(
 /**
  * Translates an Anthropic Message response to a Gemini GenerateContentResponse.
  */
-function translateResponseToGemini(message: MessageType): GenerateContentResponse {
+function translateResponseToGemini(
+  message: MessageType,
+): GenerateContentResponse {
   const parts: Part[] = [];
 
   for (const block of message.content) {
@@ -315,8 +309,7 @@ function translateResponseToGemini(message: MessageType): GenerateContentRespons
     promptTokenCount: message.usage?.input_tokens,
     candidatesTokenCount: message.usage?.output_tokens,
     totalTokenCount:
-      (message.usage?.input_tokens || 0) +
-      (message.usage?.output_tokens || 0),
+      (message.usage?.input_tokens || 0) + (message.usage?.output_tokens || 0),
   };
 
   // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
@@ -362,8 +355,8 @@ export class ClaudeContentGenerator implements ContentGenerator {
   ): MessageCreateParamsBase {
     const model = mapGeminiModelToClaude(req.model, this.userModel);
     const contents = Array.isArray(req.contents)
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-      ? (req.contents as Content[])
+      ? // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+        (req.contents as Content[])
       : [];
     const { messages } = translateContentsToMessages(contents);
 
@@ -372,16 +365,18 @@ export class ClaudeContentGenerator implements ContentGenerator {
 
     // Handle JSON mode: Claude doesn't support responseMimeType, so we add
     // explicit JSON instructions to the system prompt
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-    const responseMimeType = (
+     
+    const responseMimeType =
       // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-      req.config as Record<string, unknown> | undefined
-    )?.['responseMimeType'] as string | undefined;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-    const responseJsonSchema = (
+      (req.config as Record<string, unknown> | undefined)?.[
+        'responseMimeType'
+      ] as string | undefined;
+     
+    const responseJsonSchema =
       // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-      req.config as Record<string, unknown> | undefined
-    )?.['responseJsonSchema'] as Record<string, unknown> | undefined;
+      (req.config as Record<string, unknown> | undefined)?.[
+        'responseJsonSchema'
+      ] as Record<string, unknown> | undefined;
 
     if (responseMimeType === 'application/json') {
       const jsonInstruction = responseJsonSchema
@@ -407,14 +402,17 @@ export class ClaudeContentGenerator implements ContentGenerator {
     if (tools.length > 0) {
       params.tools = tools;
     }
+    // Claude API: temperature is mutually exclusive with top_p and top_k.
+    // If temperature is set, omit top_p/top_k. Otherwise, allow top_p/top_k.
     if (temperature !== undefined && temperature !== null) {
       params.temperature = temperature;
-    }
-    if (topP !== undefined && topP !== null) {
-      params.top_p = topP;
-    }
-    if (topK !== undefined && topK !== null) {
-      params.top_k = topK;
+    } else {
+      if (topP !== undefined && topP !== null) {
+        params.top_p = topP;
+      }
+      if (topK !== undefined && topK !== null) {
+        params.top_k = topK;
+      }
     }
 
     // Map thinking config
@@ -429,8 +427,14 @@ export class ClaudeContentGenerator implements ContentGenerator {
         thinkingConfig.thinkingLevel;
 
       if (hasThinking) {
-        const budgetTokens =
-          budget && budget > 0 ? budget : 4096;
+        const MINIMUM_THINKING_BUDGET = 1024;
+        let budgetTokens = budget && budget > 0 ? budget : 4096;
+        // Claude requires budget_tokens >= 1024 and < max_tokens
+        budgetTokens = Math.max(MINIMUM_THINKING_BUDGET, budgetTokens);
+        if (budgetTokens >= maxTokens) {
+          // Increase max_tokens to accommodate thinking budget
+          params.max_tokens = budgetTokens + maxTokens;
+        }
         // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
         (params as unknown as Record<string, unknown>)['thinking'] = {
           type: 'enabled',
@@ -449,7 +453,10 @@ export class ClaudeContentGenerator implements ContentGenerator {
   ): Promise<GenerateContentResponse> {
     const client = await this.getClient();
     const baseParams = this.buildRequest(request);
-    const params = { ...baseParams, stream: false as const } as MessageCreateParamsType;
+    const params = {
+      ...baseParams,
+      stream: false as const,
+    } as MessageCreateParamsType;
 
     // Pass abort signal to the Anthropic SDK via request options
     const abortSignal = request.config?.abortSignal;
@@ -531,10 +538,11 @@ export class ClaudeContentGenerator implements ContentGenerator {
             }
           } else if (delta.type === 'thinking_delta') {
             // Emit thinking deltas
-            yield this.makeChunk([
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-              { text: (delta as unknown as Record<string, string>)['thinking'], thought: true },
-            ]);
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+            const thinkingText = (delta as unknown as Record<string, string>)[
+              'thinking'
+            ];
+            yield this.makeChunk([{ text: thinkingText, thought: true }]);
           }
           break;
         }
@@ -624,8 +632,8 @@ export class ClaudeContentGenerator implements ContentGenerator {
     // Claude has no countTokens API on Vertex.
     // Use character-based estimation as fallback.
     const contents = Array.isArray(request.contents)
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-      ? (request.contents as Content[])
+      ? // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+        (request.contents as Content[])
       : [];
     const allParts = contents.flatMap((c) => c.parts || []);
     const tokenCount = estimateTokenCountSync(allParts);

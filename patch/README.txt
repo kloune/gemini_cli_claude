@@ -75,30 +75,33 @@ HOW TO REVERT THE PATCH
 WHAT THE PATCH CONTAINS
 -----------------------
 
-24 files changed (22 modified, 2 new), ~1865 lines.
+24 files changed (22 modified, 2 new), ~1900 lines.
 
 New files:
-  - packages/core/src/core/claudeContentGenerator.ts     (~645 lines)
+  - packages/core/src/core/claudeContentGenerator.ts     (~660 lines)
     Adapter implementing ContentGenerator interface for Claude on Vertex AI.
     Translates Gemini API types <-> Anthropic Messages API types.
 
-  - packages/core/src/core/claudeContentGenerator.test.ts (~467 lines)
-    Unit tests for the adapter. Uses explicit Content[] casts to satisfy
-    the @google/genai ContentListUnion type union.
+  - packages/core/src/core/claudeContentGenerator.test.ts (~540 lines)
+    Unit tests for the adapter including parameter exclusivity and thinking
+    budget validation. Uses explicit Content[] casts to satisfy the
+    @google/genai ContentListUnion type union.
 
 Modified files - Implementation:
   - packages/core/package.json                  - Added @anthropic-ai/vertex-sdk dependency
   - packages/core/src/config/models.ts          - Claude model constants, aliases, isClaudeModel()
-  - packages/core/src/config/defaultModelConfigs.ts - Claude model configs (opus, sonnet, haiku)
+  - packages/core/src/config/defaultModelConfigs.ts - Claude model configs with topP/topK cleared
   - packages/core/src/core/contentGenerator.ts  - Claude routing in createContentGenerator()
-  - packages/core/src/core/geminiChat.ts        - Skip thoughtSignatures for Claude
+  - packages/core/src/core/geminiChat.ts        - Skip thoughtSignatures + stream retry for Claude
   - packages/core/src/core/tokenLimits.ts       - 200k context window for Claude
   - packages/core/src/config/config.ts          - Provider switch detection in setModel()
   - packages/core/src/prompts/snippets.ts       - Model-aware preamble identity
   - packages/core/src/prompts/promptProvider.ts - Pass model name to preamble
   - packages/core/src/tools/web-search.ts       - External search API path for Claude
   - packages/core/src/tools/web-fetch.ts        - Fallback/experimental path for Claude
-  - packages/core/src/utils/retry.ts            - Anthropic error retryability comment+guard
+  - packages/core/src/utils/retry.ts            - Anthropic error retryability (400/429/529)
+  - packages/core/src/utils/googleQuotaErrors.ts - Anthropic 529 -> RetryableQuotaError
+  - packages/core/src/fallback/handler.ts       - Fallback routing for Vertex AI auth
   - packages/cli/src/ui/components/ModelDialog.tsx - Claude models in Vertex AI picker
 
 Modified files - Tests:
@@ -276,8 +279,9 @@ LIMITATIONS
   API will return a descriptive error.
 - Token counting uses character-based estimation (Claude has no countTokens API
   on Vertex AI).
-- The fallback/model-switching system (for quota exhaustion) only operates with
-  Google OAuth auth, not Vertex AI. Claude quota errors will surface directly.
+- The fallback/model-switching system supports both Google OAuth and Vertex AI
+  auth. However, Claude-to-Gemini fallback may behave unexpectedly since the
+  content generators are different providers.
 - Cost: All auxiliary LLM calls (classifier, summarizer, compression, etc.)
   also route through Claude when it is the active model. Claude Haiku is used
   for lightweight calls, but may be more expensive than Gemini Flash Lite.

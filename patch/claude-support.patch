@@ -171,10 +171,10 @@ index e3201aa52..012ea54d2 100644
  
    activateFallbackMode(model: string): void {
 diff --git a/packages/core/src/config/defaultModelConfigs.ts b/packages/core/src/config/defaultModelConfigs.ts
-index 5344aa442..1cdc218c6 100644
+index 5344aa442..2bd44768b 100644
 --- a/packages/core/src/config/defaultModelConfigs.ts
 +++ b/packages/core/src/config/defaultModelConfigs.ts
-@@ -89,6 +89,33 @@ export const DEFAULT_MODEL_CONFIGS: ModelConfigServiceConfig = {
+@@ -89,6 +89,41 @@ export const DEFAULT_MODEL_CONFIGS: ModelConfigServiceConfig = {
          model: 'gemini-2.5-flash-lite',
        },
      },
@@ -184,6 +184,10 @@ index 5344aa442..1cdc218c6 100644
 +        model: 'claude-opus-4-6',
 +        generateContentConfig: {
 +          temperature: 1,
++          // Claude API: temperature is mutually exclusive with topP/topK.
++          // Explicitly clear inherited values from 'base'.
++          topP: undefined,
++          topK: undefined,
 +        },
 +      },
 +    },
@@ -193,6 +197,8 @@ index 5344aa442..1cdc218c6 100644
 +        model: 'claude-sonnet-4-6',
 +        generateContentConfig: {
 +          temperature: 1,
++          topP: undefined,
++          topK: undefined,
 +        },
 +      },
 +    },
@@ -202,6 +208,8 @@ index 5344aa442..1cdc218c6 100644
 +        model: 'claude-haiku-4-5@20251001',
 +        generateContentConfig: {
 +          temperature: 1,
++          topP: undefined,
++          topK: undefined,
 +        },
 +      },
 +    },
@@ -419,10 +427,10 @@ index 32014d5fb..6fbae74df 100644
   *
 diff --git a/packages/core/src/core/claudeContentGenerator.test.ts b/packages/core/src/core/claudeContentGenerator.test.ts
 new file mode 100644
-index 000000000..229dce6c7
+index 000000000..09e6e62bc
 --- /dev/null
 +++ b/packages/core/src/core/claudeContentGenerator.test.ts
-@@ -0,0 +1,467 @@
+@@ -0,0 +1,540 @@
 +/**
 + * @license
 + * Copyright 2025 Google LLC
@@ -445,10 +453,16 @@ index 000000000..229dce6c7
 +import { LlmRole } from '../telemetry/llmRole.js';
 +
 +function makeGenerator() {
-+  return new ClaudeContentGenerator('test-project', 'us-east5', 'claude-sonnet-4-6');
++  return new ClaudeContentGenerator(
++    'test-project',
++    'us-east5',
++    'claude-sonnet-4-6',
++  );
 +}
 +
-+function makeRequest(overrides: Partial<GenerateContentParameters> = {}): GenerateContentParameters {
++function makeRequest(
++  overrides: Partial<GenerateContentParameters> = {},
++): GenerateContentParameters {
 +  return {
 +    model: 'claude-sonnet-4-6',
 +    contents: [
@@ -496,7 +510,9 @@ index 000000000..229dce6c7
 +
 +    it('translates text parts correctly', async () => {
 +      const req = makeRequest({
-+        contents: [{ role: 'user', parts: [{ text: 'test message' }] }] as Content[],
++        contents: [
++          { role: 'user', parts: [{ text: 'test message' }] },
++        ] as Content[],
 +      });
 +      const params = await callAndGetParams(req);
 +      expect(params.messages[0].content).toEqual([
@@ -522,7 +538,7 @@ index 000000000..229dce6c7
 +        ] as Content[],
 +      });
 +      // Prepend user message since model can't be first
-+      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
++       
 +      req.contents = [
 +        { role: 'user', parts: [{ text: 'start' }] },
 +        ...(req.contents as Content[]),
@@ -594,7 +610,7 @@ index 000000000..229dce6c7
 +          },
 +        ] as Content[],
 +      });
-+      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
++       
 +      req.contents = [
 +        { role: 'user', parts: [{ text: 'q' }] },
 +        ...(req.contents as Content[]),
@@ -671,9 +687,7 @@ index 000000000..229dce6c7
 +          tools: [
 +            { googleSearch: {} },
 +            {
-+              functionDeclarations: [
-+                { name: 'keep_me', description: 'stays' },
-+              ],
++              functionDeclarations: [{ name: 'keep_me', description: 'stays' }],
 +            },
 +          ],
 +        },
@@ -785,9 +799,7 @@ index 000000000..229dce6c7
 +      } as any);
 +      const params = await callAndGetParams(req);
 +      expect(params.system).toContain('Base instruction.');
-+      expect(params.system).toContain(
-+        'You MUST respond with valid JSON only',
-+      );
++      expect(params.system).toContain('You MUST respond with valid JSON only');
 +    });
 +  });
 +
@@ -857,7 +869,9 @@ index 000000000..229dce6c7
 +      const gen = makeGenerator();
 +      const result = await gen.countTokens({
 +        model: 'claude-sonnet-4-6',
-+        contents: [{ role: 'user', parts: [{ text: 'hello world' }] }] as Content[],
++        contents: [
++          { role: 'user', parts: [{ text: 'hello world' }] },
++        ] as Content[],
 +        // eslint-disable-next-line @typescript-eslint/no-explicit-any
 +      } as any);
 +      expect(result.totalTokens).toBeGreaterThanOrEqual(0);
@@ -871,6 +885,73 @@ index 000000000..229dce6c7
 +        // eslint-disable-next-line @typescript-eslint/no-explicit-any
 +        gen.embedContent({} as any),
 +      ).rejects.toThrow('Embedding is not supported with Claude models');
++    });
++  });
++
++  describe('Parameter Exclusivity', () => {
++    it('omits top_p and top_k when temperature is set', async () => {
++      const req = makeRequest({
++        config: {
++          temperature: 0.7,
++          topP: 0.9,
++          topK: 40,
++        },
++        // eslint-disable-next-line @typescript-eslint/no-explicit-any
++      } as any);
++      const params = await callAndGetParams(req);
++      expect(params.temperature).toBe(0.7);
++      expect(params.top_p).toBeUndefined();
++      expect(params.top_k).toBeUndefined();
++    });
++
++    it('includes top_p when temperature is not set', async () => {
++      const req = makeRequest({
++        config: {
++          topP: 0.9,
++        },
++        // eslint-disable-next-line @typescript-eslint/no-explicit-any
++      } as any);
++      const params = await callAndGetParams(req);
++      expect(params.temperature).toBeUndefined();
++      expect(params.top_p).toBe(0.9);
++    });
++
++    it('includes top_k when temperature is not set', async () => {
++      const req = makeRequest({
++        config: {
++          topK: 40,
++        },
++        // eslint-disable-next-line @typescript-eslint/no-explicit-any
++      } as any);
++      const params = await callAndGetParams(req);
++      expect(params.temperature).toBeUndefined();
++      expect(params.top_k).toBe(40);
++    });
++  });
++
++  describe('Thinking Budget Validation', () => {
++    it('clamps budget_tokens to minimum 1024', async () => {
++      const req = makeRequest({
++        config: {
++          thinkingConfig: { thinkingBudget: 500 },
++        },
++        // eslint-disable-next-line @typescript-eslint/no-explicit-any
++      } as any);
++      const params = await callAndGetParams(req);
++      expect(params.thinking.budget_tokens).toBe(1024);
++    });
++
++    it('increases max_tokens when budget_tokens >= max_tokens', async () => {
++      const req = makeRequest({
++        config: {
++          maxOutputTokens: 2000,
++          thinkingConfig: { thinkingBudget: 4096 },
++        },
++        // eslint-disable-next-line @typescript-eslint/no-explicit-any
++      } as any);
++      const params = await callAndGetParams(req);
++      expect(params.thinking.budget_tokens).toBe(4096);
++      expect(params.max_tokens).toBe(6096); // 4096 + 2000
 +    });
 +  });
 +
@@ -892,10 +973,10 @@ index 000000000..229dce6c7
 +});
 diff --git a/packages/core/src/core/claudeContentGenerator.ts b/packages/core/src/core/claudeContentGenerator.ts
 new file mode 100644
-index 000000000..8dcf06c96
+index 000000000..466a561ba
 --- /dev/null
 +++ b/packages/core/src/core/claudeContentGenerator.ts
-@@ -0,0 +1,645 @@
+@@ -0,0 +1,656 @@
 +/**
 + * @license
 + * Copyright 2025 Google LLC
@@ -1305,14 +1386,17 @@ index 000000000..8dcf06c96
 +    if (tools.length > 0) {
 +      params.tools = tools;
 +    }
++    // Claude API: temperature is mutually exclusive with top_p and top_k.
++    // If temperature is set, omit top_p/top_k. Otherwise, allow top_p/top_k.
 +    if (temperature !== undefined && temperature !== null) {
 +      params.temperature = temperature;
-+    }
-+    if (topP !== undefined && topP !== null) {
-+      params.top_p = topP;
-+    }
-+    if (topK !== undefined && topK !== null) {
-+      params.top_k = topK;
++    } else {
++      if (topP !== undefined && topP !== null) {
++        params.top_p = topP;
++      }
++      if (topK !== undefined && topK !== null) {
++        params.top_k = topK;
++      }
 +    }
 +
 +    // Map thinking config
@@ -1327,8 +1411,15 @@ index 000000000..8dcf06c96
 +        thinkingConfig.thinkingLevel;
 +
 +      if (hasThinking) {
-+        const budgetTokens =
++        const MINIMUM_THINKING_BUDGET = 1024;
++        let budgetTokens =
 +          budget && budget > 0 ? budget : 4096;
++        // Claude requires budget_tokens >= 1024 and < max_tokens
++        budgetTokens = Math.max(MINIMUM_THINKING_BUDGET, budgetTokens);
++        if (budgetTokens >= maxTokens) {
++          // Increase max_tokens to accommodate thinking budget
++          params.max_tokens = budgetTokens + maxTokens;
++        }
 +        // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
 +        (params as unknown as Record<string, unknown>)['thinking'] = {
 +          type: 'enabled',
@@ -1429,9 +1520,10 @@ index 000000000..8dcf06c96
 +            }
 +          } else if (delta.type === 'thinking_delta') {
 +            // Emit thinking deltas
++            // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
++            const thinkingText = (delta as unknown as Record<string, string>)['thinking'];
 +            yield this.makeChunk([
-+              // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-+              { text: (delta as unknown as Record<string, string>)['thinking'], thought: true },
++              { text: thinkingText, thought: true },
 +            ]);
 +          }
 +          break;
@@ -1702,7 +1794,7 @@ index 2ce542033..3c3bcf4fe 100644
        if (config.customHeaders) {
          headers = { ...headers, ...config.customHeaders };
 diff --git a/packages/core/src/core/geminiChat.ts b/packages/core/src/core/geminiChat.ts
-index ae5f46db3..f231f886d 100644
+index ae5f46db3..77d340876 100644
 --- a/packages/core/src/core/geminiChat.ts
 +++ b/packages/core/src/core/geminiChat.ts
 @@ -25,6 +25,7 @@ import type { Config } from '../config/config.js';
@@ -1713,6 +1805,15 @@ index ae5f46db3..f231f886d 100644
    supportsModernFeatures,
  } from '../config/models.js';
  import { hasCycleInSchema } from '../tools/tools.js';
+@@ -419,7 +420,7 @@ export class GeminiChat {
+             const isContentError = error instanceof InvalidStreamError;
+ 
+             if (
+-              (isContentError && isGemini2Model(model)) ||
++              (isContentError && (isGemini2Model(model) || isClaudeModel(model))) ||
+               (isRetryable && !signal.aborted)
+             ) {
+               // Check if we have more attempts left.
 @@ -742,7 +743,11 @@ export class GeminiChat {
    // To ensure our requests validate, the first function call in every model
    // turn within the active loop must have a `thoughtSignature` property.
@@ -1747,6 +1848,19 @@ index 39a3443e3..f38c52c55 100644
    switch (model) {
      case PREVIEW_GEMINI_MODEL:
      case PREVIEW_GEMINI_FLASH_MODEL:
+diff --git a/packages/core/src/fallback/handler.ts b/packages/core/src/fallback/handler.ts
+index ed8745400..1f514734d 100644
+--- a/packages/core/src/fallback/handler.ts
++++ b/packages/core/src/fallback/handler.ts
+@@ -26,7 +26,7 @@ export async function handleFallback(
+   authType?: string,
+   error?: unknown,
+ ): Promise<string | boolean | null> {
+-  if (authType !== AuthType.LOGIN_WITH_GOOGLE) {
++  if (authType !== AuthType.LOGIN_WITH_GOOGLE && authType !== AuthType.USE_VERTEX_AI) {
+     return null;
+   }
+ 
 diff --git a/packages/core/src/prompts/promptProvider.test.ts b/packages/core/src/prompts/promptProvider.test.ts
 index 2d96dee7e..7f5a2221e 100644
 --- a/packages/core/src/prompts/promptProvider.test.ts
@@ -1833,38 +1947,35 @@ index 3b3334f96..e7009370c 100644
  
  export function renderCoreMandates(options?: CoreMandatesOptions): string {
 diff --git a/packages/core/src/services/test-data/resolved-aliases-retry.golden.json b/packages/core/src/services/test-data/resolved-aliases-retry.golden.json
-index bb6dabdd6..8b6ad9ff4 100644
+index bb6dabdd6..bcfc05e4f 100644
 --- a/packages/core/src/services/test-data/resolved-aliases-retry.golden.json
 +++ b/packages/core/src/services/test-data/resolved-aliases-retry.golden.json
-@@ -97,6 +97,27 @@
+@@ -97,6 +97,24 @@
        "topK": 64
      }
    },
 +  "claude-opus-4-6": {
 +    "model": "claude-opus-4-6",
 +    "generateContentConfig": {
-+      "temperature": 1,
-+      "topP": 1
++      "temperature": 1
 +    }
 +  },
 +  "claude-sonnet-4-6": {
 +    "model": "claude-sonnet-4-6",
 +    "generateContentConfig": {
-+      "temperature": 1,
-+      "topP": 1
++      "temperature": 1
 +    }
 +  },
 +  "claude-haiku-4-5@20251001": {
 +    "model": "claude-haiku-4-5@20251001",
 +    "generateContentConfig": {
-+      "temperature": 1,
-+      "topP": 1
++      "temperature": 1
 +    }
 +  },
    "gemini-2.5-flash-base": {
      "model": "gemini-2.5-flash",
      "generateContentConfig": {
-@@ -253,4 +274,4 @@
+@@ -253,4 +271,4 @@
      "model": "gemini-3-pro-preview",
      "generateContentConfig": {}
    }
@@ -1872,38 +1983,35 @@ index bb6dabdd6..8b6ad9ff4 100644
 +}
 \ No newline at end of file
 diff --git a/packages/core/src/services/test-data/resolved-aliases.golden.json b/packages/core/src/services/test-data/resolved-aliases.golden.json
-index bb6dabdd6..8b6ad9ff4 100644
+index bb6dabdd6..bcfc05e4f 100644
 --- a/packages/core/src/services/test-data/resolved-aliases.golden.json
 +++ b/packages/core/src/services/test-data/resolved-aliases.golden.json
-@@ -97,6 +97,27 @@
+@@ -97,6 +97,24 @@
        "topK": 64
      }
    },
 +  "claude-opus-4-6": {
 +    "model": "claude-opus-4-6",
 +    "generateContentConfig": {
-+      "temperature": 1,
-+      "topP": 1
++      "temperature": 1
 +    }
 +  },
 +  "claude-sonnet-4-6": {
 +    "model": "claude-sonnet-4-6",
 +    "generateContentConfig": {
-+      "temperature": 1,
-+      "topP": 1
++      "temperature": 1
 +    }
 +  },
 +  "claude-haiku-4-5@20251001": {
 +    "model": "claude-haiku-4-5@20251001",
 +    "generateContentConfig": {
-+      "temperature": 1,
-+      "topP": 1
++      "temperature": 1
 +    }
 +  },
    "gemini-2.5-flash-base": {
      "model": "gemini-2.5-flash",
      "generateContentConfig": {
-@@ -253,4 +274,4 @@
+@@ -253,4 +271,4 @@
      "model": "gemini-3-pro-preview",
      "generateContentConfig": {}
    }
@@ -2269,6 +2377,31 @@ index 2756599b2..952188614 100644
      const geminiClient = this.config.getGeminiClient();
  
      try {
+diff --git a/packages/core/src/utils/googleQuotaErrors.ts b/packages/core/src/utils/googleQuotaErrors.ts
+index d0c251e83..833c95372 100644
+--- a/packages/core/src/utils/googleQuotaErrors.ts
++++ b/packages/core/src/utils/googleQuotaErrors.ts
+@@ -225,6 +225,20 @@ export function classifyGoogleError(error: unknown): unknown {
+     );
+   }
+ 
++  // Check for Anthropic 529 (overloaded) errors
++  if (status === 529) {
++    const errorMessage =
++      error instanceof Error ? error.message : String(error);
++    return new RetryableQuotaError(
++      errorMessage,
++      googleApiError ?? {
++        code: 529,
++        message: errorMessage,
++        details: [],
++      },
++    );
++  }
++
+   if (
+     !googleApiError ||
+     (googleApiError.code !== 429 && googleApiError.code !== 499) ||
 diff --git a/packages/core/src/utils/retry.test.ts b/packages/core/src/utils/retry.test.ts
 index f63a5ed72..857593967 100644
 --- a/packages/core/src/utils/retry.test.ts

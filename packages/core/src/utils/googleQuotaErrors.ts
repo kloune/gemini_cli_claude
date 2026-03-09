@@ -225,6 +225,19 @@ export function classifyGoogleError(error: unknown): unknown {
     );
   }
 
+  // Check for Anthropic 529 (overloaded) errors
+  if (status === 529) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return new RetryableQuotaError(
+      errorMessage,
+      googleApiError ?? {
+        code: 529,
+        message: errorMessage,
+        details: [],
+      },
+    );
+  }
+
   if (
     !googleApiError ||
     (googleApiError.code !== 429 && googleApiError.code !== 499) ||

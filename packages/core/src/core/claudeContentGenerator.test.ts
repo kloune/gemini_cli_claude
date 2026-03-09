@@ -105,7 +105,7 @@ describe('ClaudeContentGenerator', () => {
         ] as Content[],
       });
       // Prepend user message since model can't be first
-       
+
       req.contents = [
         { role: 'user', parts: [{ text: 'start' }] },
         ...(req.contents as Content[]),
@@ -177,7 +177,7 @@ describe('ClaudeContentGenerator', () => {
           },
         ] as Content[],
       });
-       
+
       req.contents = [
         { role: 'user', parts: [{ text: 'q' }] },
         ...(req.contents as Content[]),
@@ -452,6 +452,73 @@ describe('ClaudeContentGenerator', () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         gen.embedContent({} as any),
       ).rejects.toThrow('Embedding is not supported with Claude models');
+    });
+  });
+
+  describe('Parameter Exclusivity', () => {
+    it('omits top_p and top_k when temperature is set', async () => {
+      const req = makeRequest({
+        config: {
+          temperature: 0.7,
+          topP: 0.9,
+          topK: 40,
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
+      const params = await callAndGetParams(req);
+      expect(params.temperature).toBe(0.7);
+      expect(params.top_p).toBeUndefined();
+      expect(params.top_k).toBeUndefined();
+    });
+
+    it('includes top_p when temperature is not set', async () => {
+      const req = makeRequest({
+        config: {
+          topP: 0.9,
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
+      const params = await callAndGetParams(req);
+      expect(params.temperature).toBeUndefined();
+      expect(params.top_p).toBe(0.9);
+    });
+
+    it('includes top_k when temperature is not set', async () => {
+      const req = makeRequest({
+        config: {
+          topK: 40,
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
+      const params = await callAndGetParams(req);
+      expect(params.temperature).toBeUndefined();
+      expect(params.top_k).toBe(40);
+    });
+  });
+
+  describe('Thinking Budget Validation', () => {
+    it('clamps budget_tokens to minimum 1024', async () => {
+      const req = makeRequest({
+        config: {
+          thinkingConfig: { thinkingBudget: 500 },
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
+      const params = await callAndGetParams(req);
+      expect(params.thinking.budget_tokens).toBe(1024);
+    });
+
+    it('increases max_tokens when budget_tokens >= max_tokens', async () => {
+      const req = makeRequest({
+        config: {
+          maxOutputTokens: 2000,
+          thinkingConfig: { thinkingBudget: 4096 },
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
+      const params = await callAndGetParams(req);
+      expect(params.thinking.budget_tokens).toBe(4096);
+      expect(params.max_tokens).toBe(6096); // 4096 + 2000
     });
   });
 

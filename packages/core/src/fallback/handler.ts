@@ -26,7 +26,10 @@ export async function handleFallback(
   authType?: string,
   error?: unknown,
 ): Promise<string | boolean | null> {
-  if (authType !== AuthType.LOGIN_WITH_GOOGLE) {
+  if (
+    authType !== AuthType.LOGIN_WITH_GOOGLE &&
+    authType !== AuthType.USE_VERTEX_AI
+  ) {
     return null;
   }
 

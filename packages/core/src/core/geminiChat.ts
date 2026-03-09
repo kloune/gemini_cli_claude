@@ -420,7 +420,8 @@ export class GeminiChat {
             const isContentError = error instanceof InvalidStreamError;
 
             if (
-              (isContentError && isGemini2Model(model)) ||
+              (isContentError &&
+                (isGemini2Model(model) || isClaudeModel(model))) ||
               (isRetryable && !signal.aborted)
             ) {
               // Check if we have more attempts left.
